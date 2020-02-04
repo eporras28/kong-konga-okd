@@ -1,0 +1,3431 @@
+    ##comienzo Template
+  apiVersion: v1
+  kind: Template
+  metadata:
+    name: kong-openshift-mvilche
+    labels:
+      template: konga-openshift-mvilche
+      autor: "Martin_Fabrizzio_Vilche"
+    annotations:
+      openshift.io/display-name: "konga-openshift-mvilche"
+      iconClass: "icon-github"
+      description: >-
+        konga api gateway INTEGRACION OPENSHIFT
+        Martin Fabrizzio Vilche.
+        https://github.com/mvilche.
+
+  objects:
+
+
+
+
+
+
+
+########## KONG
+
+
+
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      finalizers:
+      - kubernetes.io/pvc-protection
+      name: kong-api-gateway-data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 20Gi
+
+
+          
+  - apiVersion: v1
+    data:
+      kong.conf: |-
+        # -----------------------
+        # Kong configuration file
+        # -----------------------
+        #
+        # The commented-out settings shown in this file represent the default values.
+        #
+        # This file is read when `kong start` or `kong prepare` are used. Kong
+        # generates the Nginx configuration with the settings specified in this file.
+        #
+        # All environment variables prefixed with `KONG_` and capitalized will override
+        # the settings specified in this file.
+        # Example:
+        #   `log_level` setting -> `KONG_LOG_LEVEL` env variable
+        #
+        # Boolean values can be specified as `on`/`off` or `true`/`false`.
+        # Lists must be specified as comma-separated strings.
+        #
+        # All comments in this file can be removed safely, including the
+        # commented-out properties.
+        # You can verify the integrity of your settings with `kong check <conf>`.
+
+        #------------------------------------------------------------------------------
+        # GENERAL
+        #------------------------------------------------------------------------------
+
+        #prefix = /usr/local/kong/       # Working directory. Equivalent to Nginx's
+                                        # prefix path, containing temporary files
+                                        # and logs.
+                                        # Each Kong process must have a separate
+                                        # working directory.
+
+        log_level = error              # Log level of the Nginx server. Logs are
+                                        # found at `<prefix>/logs/error.log`.
+
+        # See http://nginx.org/en/docs/ngx_core_module.html#error_log for a list
+        # of accepted values.
+
+        #proxy_access_log = logs/access.log       # Path for proxy port request access
+                                                  # logs. Set this value to `off` to
+                                                  # disable logging proxy requests.
+                                                  # If this value is a relative path,
+                                                  # it will be placed under the
+                                                  # `prefix` location.
+
+        proxy_error_log = /dev/stdout         # Path for proxy port request error
+                                                  # logs. The granularity of these logs
+                                                  # is adjusted by the `log_level`
+                                                  # property.
+
+        #admin_access_log = logs/admin_access.log # Path for Admin API request access
+                                                  # logs. Set this value to `off` to
+                                                  # disable logging Admin API requests.
+                                                  # If this value is a relative path,
+                                                  # it will be placed under the
+                                                  # `prefix` location.
+
+        admin_error_log = /dev/stdout         # Path for Admin API request error
+                                                  # logs. The granularity of these logs
+                                                  # is adjusted by the `log_level`
+                                                  # property.
+
+        #status_access_log = off                  # Path for Status API request access
+                                                  # logs. The default value of `off`
+                                                  # implies that loggin for this API
+                                                  # is disabled by default.
+                                                  # If this value is a relative path,
+                                                  # it will be placed under the
+                                                  # `prefix` location.
+
+        status_error_log = /dev/stdout # Path for Status API request error
+                                                  # logs. The granularity of these logs
+                                                  # is adjusted by the `log_level`
+                                                  # property.
+
+        #plugins = bundled,prometheus               # Comma-separated list of plugins this node
+                                        # should load. By default, only plugins
+                                        # bundled in official distributions are
+                                        # loaded via the `bundled` keyword.
+                                        #
+                                        # Loading a plugin does not enable it by
+                                        # default, but only instructs Kong to load its
+                                        # source code, and allows to configure the
+                                        # plugin via the various related Admin API
+                                        # endpoints.
+                                        #
+                                        # The specified name(s) will be substituted as
+                                        # such in the Lua namespace:
+                                        # `kong.plugins.{name}.*`.
+                                        #
+                                        # When the `off` keyword is specified as the
+                                        # only value, no plugins will be loaded.
+                                        #
+                                        # `bundled` and plugin names can be mixed
+                                        # together, as the following examples suggest:
+                                        #
+                                        # - `plugins = bundled,custom-auth,custom-log`
+                                        #   will include the bundled plugins plus two
+                                        #   custom ones
+                                        # - `plugins = custom-auth,custom-log` will
+                                        #   *only* include the `custom-auth` and
+                                        #   `custom-log` plugins.
+                                        # - `plugins = off` will not include any
+                                        #   plugins
+                                        #
+                                        # **Note:** Kong will not start if some
+                                        # plugins were previously configured (i.e.
+                                        # have rows in the database) and are not
+                                        # specified in this list.  Before disabling a
+                                        # plugin, ensure all instances of it are
+                                        # removed before restarting Kong.
+                                        #
+                                        # **Note:** Limiting the amount of available
+                                        # plugins can improve P99 latency when
+                                        # experiencing LRU churning in the database
+                                        # cache (i.e. when the configured
+                                        # `mem_cache_size`) is full.
+
+        #anonymous_reports = on          # Send anonymous usage data such as error
+                                        # stack traces to help improve Kong.
+
+        #service_mesh = off              # When `on`, enable the built-in Service Mesh
+                                        # support of Kong.
+                                        #
+                                        # **Note:** Enabling service mesh causes
+                                        # upstream requests to HTTPS services to
+                                        # behave incorrectly. Service Mesh has been
+                                        # deprecated and will be removed in the next
+                                        # release of Kong.
+
+        #------------------------------------------------------------------------------
+        # NGINX
+        #------------------------------------------------------------------------------
+
+        proxy_listen = 0.0.0.0:8000, 0.0.0.0:8443 ssl
+                                # Comma-separated list of addresses and ports on
+                                # which the proxy server should listen for
+                                # HTTP/HTTPS traffic.
+                                # The proxy server is the public entry point of Kong,
+                                # which proxies traffic from your consumers to your
+                                # backend services. This value accepts IPv4, IPv6, and
+                                # hostnames.
+                                #
+                                # Some suffixes can be specified for each pair:
+                                #
+                                # - `ssl` will require that all connections made
+                                #   through a particular address/port be made with TLS
+                                #   enabled.
+                                # - `http2` will allow for clients to open HTTP/2
+                                #   connections to Kong's proxy server.
+                                # - `proxy_protocol` will enable usage of the
+                                #   PROXY protocol for a given address/port.
+                                # - `transparent` will cause kong to listen to, and
+                                #   respond from, any and all IP addresses and ports
+                                #   you configure in iptables.
+                                # - `deferred` instructs to use a deferred accept on
+                                #   Linux (the TCP_DEFER_ACCEPT socket option).
+                                # - `bind` instructs to make a separate bind() call
+                                #   for a given address:port pair.
+                                # - `reuseport` instructs to create an individual
+                                #   listening socket for each worker process
+                                #   allowing a kernel to distribute incoming
+                                #   connections between worker processes
+                                #
+                                # This value can be set to `off`, thus disabling
+                                # the HTTP/HTTPS proxy port for this node.
+                                # If stream_listen is also set to `off`, this enables
+                                # 'control-plane' mode for this node
+                                # (in which all traffic proxying capabilities are
+                                # disabled). This node can then be used only to
+                                # configure a cluster of Kong
+                                # nodes connected to the same datastore.
+                                #
+                                # Example:
+                                # `proxy_listen = 0.0.0.0:443 ssl, 0.0.0.0:444 http2 ssl`
+                                #
+                                # See http://nginx.org/en/docs/http/ngx_http_core_module.html#listen
+                                # for a description of the accepted formats for this
+                                # and other `*_listen` values.
+                                #
+                                # See https://www.nginx.com/resources/admin-guide/proxy-protocol/
+                                # for more details about the `proxy_protocol`
+                                # parameter.
+                                #
+                                # Not all `*_listen` values accept all formats
+                                # specified in nginx's documentation.
+
+        #stream_listen = off
+                                # Comma-separated list of addresses and ports on
+                                # which the stream mode should listen.
+                                #
+                                # This value accepts IPv4, IPv6, and hostnames.
+                                # Some suffixes can be specified for each pair:
+                                # - `proxy_protocol` will enable usage of the
+                                #   PROXY protocol for a given address/port.
+                                # - `transparent` will cause kong to listen to, and
+                                #   respond from, any and all IP addresses and ports
+                                #   you configure in iptables.
+                                # - `bind` instructs to make a separate bind() call
+                                #   for a given address:port pair.
+                                # - `reuseport` instructs to create an individual
+                                #   listening socket for each worker process
+                                #   allowing a kernel to distribute incoming
+                                #   connections between worker processes
+                                #
+                                # **Note:** The `ssl` suffix is not supported,
+                                # and each address/port will accept TCP with or
+                                # without TLS enabled.
+                                #
+                                # Examples:
+                                #
+                                # ```
+                                # stream_listen = 127.0.0.1:7000
+                                # stream_listen = 0.0.0.0:989, 0.0.0.0:20
+                                # stream_listen = [::1]:1234
+                                # ```
+                                #
+                                # By default this value is set to `off`, thus
+                                # disabling the stream proxy port for this node.
+
+        # See http://nginx.org/en/docs/stream/ngx_stream_core_module.html#listen
+        # for a description of the formats that Kong might accept in stream_listen.
+
+        admin_listen = 0.0.0.0:8001, 0.0.0.0:8444 ssl
+                                # Comma-separated list of addresses and ports on
+                                # which the Admin interface should listen.
+                                # The Admin interface is the API allowing you to
+                                # configure and manage Kong.
+                                # Access to this interface should be *restricted*
+                                # to Kong administrators *only*. This value accepts
+                                # IPv4, IPv6, and hostnames.
+                                #
+                                # Some suffixes can be specified for each pair:
+                                #
+                                # - `ssl` will require that all connections made
+                                #   through a particular address/port be made with TLS
+                                #   enabled.
+                                # - `http2` will allow for clients to open HTTP/2
+                                #   connections to Kong's proxy server.
+                                # - `proxy_protocol` will enable usage of the
+                                #   PROXY protocol for a given address/port.
+                                # - `transparent` will cause kong to listen to, and
+                                #   respond from, any and all IP addresses and ports
+                                #   you configure in iptables.
+                                # - `deferred` instructs to use a deferred accept on
+                                #   Linux (the TCP_DEFER_ACCEPT socket option).
+                                # - `bind` instructs to make a separate bind() call
+                                #   for a given address:port pair.
+                                # - `reuseport` instructs to create an individual
+                                #   listening socket for each worker process
+                                #   allowing a kernel to distribute incoming
+                                #   connections between worker processes
+                                #
+                                # This value can be set to `off`, thus disabling
+                                # the Admin interface for this node, enabling a
+                                # 'data-plane' mode (without configuration
+                                # capabilities) pulling its configuration changes
+                                # from the database.
+                                #
+                                # Example: `admin_listen = 127.0.0.1:8444 http2 ssl`
+
+        #status_listen = off    # Comma-separated list of addresses and ports on
+                                # which the Status API should listen.
+                                # The Status API is a read-only endpoint
+                                # allowing monitoring tools to retrieve metrics,
+                                # healthiness, and other non-sensitive information
+                                # of the current Kong node.
+                                #
+                                # This value can be set to `off`, disabling
+                                # the Status API for this node.
+                                #
+                                # Example: `status_listen = 0.0.0.0:8100`
+
+
+        #nginx_user = nobody nobody      # Defines user and group credentials used by
+                                        # worker processes. If group is omitted, a
+                                        # group whose name equals that of user is
+                                        # used.
+                                        #
+                                        # Example: `nginx_user = nginx www`
+
+        #nginx_worker_processes = auto   # Determines the number of worker processes
+                                        # spawned by Nginx.
+                                        #
+                                        # See http://nginx.org/en/docs/ngx_core_module.html#worker_processes
+                                        # for detailed usage of the equivalent Nginx
+                                        # directive and a description of accepted
+                                        # values.
+
+        nginx_daemon = off              # Determines whether Nginx will run as a daemon
+                                        # or as a foreground process. Mainly useful
+                                        # for development or when running Kong inside
+                                        # a Docker environment.
+                                        #
+                                        # See http://nginx.org/en/docs/ngx_core_module.html#daemon.
+
+        #mem_cache_size = 128m           # Size of the in-memory cache for database
+                                        # entities. The accepted units are `k` and
+                                        # `m`, with a minimum recommended value of
+                                        # a few MBs.
+
+        #ssl_cipher_suite = modern       # Defines the TLS ciphers served by Nginx.
+                                        # Accepted values are `modern`,
+                                        # `intermediate`, `old`, or `custom`.
+                                        #
+                                        # See https://wiki.mozilla.org/Security/Server_Side_TLS
+                                        # for detailed descriptions of each cipher
+                                        # suite.
+
+        #ssl_ciphers =                   # Defines a custom list of TLS ciphers to be
+                                        # served by Nginx. This list must conform to
+                                        # the pattern defined by `openssl ciphers`.
+                                        # This value is ignored if `ssl_cipher_suite`
+                                        # is not `custom`.
+
+        #ssl_cert =                      # The absolute path to the SSL certificate for
+                                        # `proxy_listen` values with SSL enabled.
+
+        #ssl_cert_key =                  # The absolute path to the SSL key for
+                                        # `proxy_listen` values with SSL enabled.
+
+        #client_ssl = off                # Determines if Nginx should send client-side
+                                        # SSL certificates when proxying requests.
+
+        #client_ssl_cert =               # If `client_ssl` is enabled, the absolute
+                                        # path to the client SSL certificate for the
+                                        # `proxy_ssl_certificate` directive. Note that
+                                        # this value is statically defined on the
+                                        # node, and currently cannot be configured on
+                                        # a per-API basis.
+
+        #client_ssl_cert_key =           # If `client_ssl` is enabled, the absolute
+                                        # path to the client SSL key for the
+                                        # `proxy_ssl_certificate_key` address. Note
+                                        # this value is statically defined on the
+                                        # node, and currently cannot be configured on
+                                        # a per-API basis.
+
+        #admin_ssl_cert =                # The absolute path to the SSL certificate for
+                                        # `admin_listen` values with SSL enabled.
+
+        #admin_ssl_cert_key =            # The absolute path to the SSL key for
+                                        # `admin_listen` values with SSL enabled.
+
+        #headers = server_tokens, latency_tokens
+                                        # Comma-separated list of headers Kong should
+                                        # inject in client responses.
+                                        #
+                                        # Accepted values are:
+                                        # - `Server`: Injects `Server: kong/x.y.z`
+                                        #   on Kong-produced response (e.g. Admin
+                                        #   API, rejected requests from auth plugin).
+                                        # - `Via`: Injects `Via: kong/x.y.z` for
+                                        #   successfully proxied requests.
+                                        # - `X-Kong-Proxy-Latency`: Time taken
+                                        #   (in milliseconds) by Kong to process
+                                        #   a request and run all plugins before
+                                        #   proxying the request upstream.
+                                        # - `X-Kong-Response-Latency`: time taken
+                                        #   (in millisecond) by Kong to produce
+                                        #   a response in case of e.g. plugin
+                                        #   short-circuiting the request, or in
+                                        #   in case of an error.
+                                        # - `X-Kong-Upstream-Latency`: Time taken
+                                        #   (in milliseconds) by the upstream
+                                        #   service to send response headers.
+                                        # - `X-Kong-Admin-Latency`: Time taken
+                                        #   (in milliseconds) by Kong to process
+                                        #   an Admin API request.
+                                        # - `X-Kong-Upstream-Status`: The HTTP status
+                                        #   code returned by the upstream service.
+                                        #   This is particularly useful for clients to
+                                        #   distinguish upstream statuses if the
+                                        #   response is rewritten by a plugin.
+                                        # - `server_tokens`: Same as specifying both
+                                        #   `Server` and `Via`.
+                                        # - `latency_tokens`: Same as specifying
+                                        #   `X-Kong-Proxy-Latency`,
+                                        #   `X-Kong-Response-Latency`,
+                                        #   `X-Kong-Admin-Latency` and
+                                        #   `X-Kong-Upstream-Latency`
+                                        #
+                                        # In addition to those, this value can be set
+                                        # to `off`, which prevents Kong from injecting
+                                        # any of the above headers. Note that this
+                                        # does not prevent plugins from injecting
+                                        # headers of their own.
+                                        #
+                                        # Example: `headers = via, latency_tokens`
+
+        #trusted_ips =                   # Defines trusted IP addresses blocks that are
+                                        # known to send correct `X-Forwarded-*`
+                                        # headers.
+                                        # Requests from trusted IPs make Kong forward
+                                        # their `X-Forwarded-*` headers upstream.
+                                        # Non-trusted requests make Kong insert its
+                                        # own `X-Forwarded-*` headers.
+                                        #
+                                        # This property also sets the
+                                        # `set_real_ip_from` directive(s) in the Nginx
+                                        # configuration. It accepts the same type of
+                                        # values (CIDR blocks) but as a
+                                        # comma-separated list.
+                                        #
+                                        # To trust *all* /!\ IPs, set this value to
+                                        # `0.0.0.0/0,::/0`.
+                                        #
+                                        # If the special value `unix:` is specified,
+                                        # all UNIX-domain sockets will be trusted.
+                                        #
+                                        # See http://nginx.org/en/docs/http/ngx_http_realip_module.html#set_real_ip_from
+                                        # for examples of accepted values.
+
+        #real_ip_header = X-Real-IP      # Defines the request header field whose value
+                                        # will be used to replace the client address.
+                                        # This value sets the `ngx_http_realip_module`
+                                        # directive of the same name in the Nginx
+                                        # configuration.
+                                        #
+                                        # If this value receives `proxy_protocol`:
+                                        #
+                                        # - at least one of the `proxy_listen` entries
+                                        #   must have the `proxy_protocol` flag
+                                        #   enabled.
+                                        # - the `proxy_protocol` parameter will be
+                                        #   appended to the `listen` directive of the
+                                        #   Nginx template.
+                                        #
+                                        # See http://nginx.org/en/docs/http/ngx_http_realip_module.html#real_ip_header
+                                        # for a description of this directive.
+
+        #real_ip_recursive = off         # This value sets the `ngx_http_realip_module`
+                                        # directive of the same name in the Nginx
+                                        # configuration.
+                                        #
+                                        # See http://nginx.org/en/docs/http/ngx_http_realip_module.html#real_ip_recursive
+                                        # for a description of this directive.
+
+        #client_max_body_size = 0        # Defines the maximum request body size allowed
+                                        # by requests proxied by Kong, specified in
+                                        # the Content-Length request header. If a
+                                        # request exceeds this limit, Kong will
+                                        # respond with a 413 (Request Entity Too
+                                        # Large). Setting this value to 0 disables
+                                        # checking the request body size.
+
+        # See http://nginx.org/en/docs/http/ngx_http_core_module.html#client_max_body_size
+        # for further description of this parameter. Numeric values may be suffixed
+        # with `k` or `m` to denote limits in terms of kilobytes or megabytes.
+
+        #client_body_buffer_size = 8k    # Defines the buffer size for reading the
+                                        # request body. If the client request body is
+                                        # larger than this value, the body will be
+                                        # buffered to disk. Note that when the body is
+                                        # buffered to disk Kong plugins that access or
+                                        # manipulate the request body may not work, so
+                                        # it is advisable to set this value as high as
+                                        # possible (e.g., set it as high as
+                                        # `client_max_body_size` to force request
+                                        # bodies to be kept in memory). Do note that
+                                        # high-concurrency environments will require
+                                        # significant memory allocations to process
+                                        # many concurrent large request bodies.
+
+        # See http://nginx.org/en/docs/http/ngx_http_core_module.html#client_body_buffer_size
+        # for further description of this parameter. Numeric values may be suffixed
+        # with `k` or `m` to denote limits in terms of kilobytes or megabytes.
+
+        #error_default_type = text/plain  # Default MIME type to use when the request
+                                          # `Accept` header is missing and Nginx
+                                          # is returning an error for the request.
+                                          # Accepted values are `text/plain`,
+                                          # `text/html`, `application/json`, and
+                                          # `application/xml`.
+
+        #------------------------------------------------------------------------------
+        # NGINX injected directives
+        #------------------------------------------------------------------------------
+
+        # Nginx directives can be dynamically injected in the runtime nginx.conf file
+        # without requiring a custom Nginx configuration template.
+        #
+        # All configuration properties respecting the naming scheme
+        # `nginx_<namespace>_<directive>` will result in `<directive>` being injected in
+        # the Nginx configuration block corresponding to the property's `<namespace>`.
+        # Example:
+        #   `nginx_proxy_large_client_header_buffers = 8 24k`
+        #
+        #   Will inject the following directive in Kong's proxy `server {}` block:
+        #
+        #   `large_client_header_buffers 8 24k;`
+        #
+        # The following namespaces are supported:
+        #
+        # - `nginx_http_<directive>`: Injects `<directive>` in Kong's `http {}` block.
+        # - `nginx_proxy_<directive>`: Injects `<directive>` in Kong's proxy
+        #   `server {}` block.
+        # - `nginx_http_upstream_<directive>`: Injects `<directive>` in Kong's proxy
+        #   `upstream {}` block.
+        # - `nginx_admin_<directive>`: Injects `<directive>` in Kong's Admin API
+        #   `server {}` block.
+        # - `nginx_stream_<directive>`: Injects `<directive>` in Kong's stream module
+        #   `stream {}` block (only effective if `stream_listen` is enabled).
+        # - `nginx_sproxy_<directive>`: Injects `<directive>` in Kong's stream module
+        #   `server {}` block (only effective if `stream_listen` is enabled).
+        #
+        # As with other configuration properties, Nginx directives can be injected via
+        # environment variables when capitalized and prefixed with `KONG_`.
+        # Example:
+        #   `KONG_NGINX_HTTP_SSL_PROTOCOLS` -> `nginx_http_ssl_protocols`
+        #
+        #   Will inject the following directive in Kong's `http {}` block:
+        #
+        #   `ssl_protocols <value>;`
+        #
+        #   If different sets of protocols are desired between the proxy and Admin API
+        #   server, you may specify `nginx_proxy_ssl_protocols` and/or
+        #   `nginx_admin_ssl_protocols`, both of which taking precedence over the
+        #   `http {}` block.
+
+        #nginx_http_ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
+                                        # Enables the specified protocols for
+                                        # client-side connections. The set of
+                                        # supported protocol versions also depends
+                                        # on the version of OpenSSL Kong was built
+                                        # with.
+                                        # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_protocols
+
+        #nginx_http_upstream_keepalive = 60
+                                        # Sets the maximum number of idle keepalive
+                                        # connections to upstream servers that are
+                                        # preserved in the cache of each worker
+                                        # process. When this number is exceeded, the
+                                        # least recently used connections are closed.
+                                        # A value of `NONE` will disable this behavior
+                                        # altogether, forcing each upstream request
+                                        # to open a new connection.
+                                        # See http://nginx.org/en/docs/http/ngx_http_upstream_module.html#keepalive
+
+        #nginx_http_upstream_keepalive_requests = 100
+                                        # Sets the maximum number of requests that can
+                                        # be served through one keepalive connection.
+                                        # After the maximum number of requests is
+                                        # made, the connection is closed.
+                                        # See http://nginx.org/en/docs/http/ngx_http_upstream_module.html#keepalive_requests
+
+        #nginx_http_upstream_keepalive_timeout = 60s
+                                        # Sets a timeout during which an idle
+                                        # keepalive connection to an upstream server
+                                        # will stay open.
+                                        # See http://nginx.org/en/docs/http/ngx_http_upstream_module.html#keepalive_timeout
+
+        #------------------------------------------------------------------------------
+        # DATASTORE
+        #------------------------------------------------------------------------------
+
+        # Kong can run with a database to store coordinated data between Kong nodes in
+        # a cluster, or without a database, where each node stores its information
+        # independently in memory.
+        #
+        # When using a database, Kong will store data for all its entities (such as
+        # Routes, Services, Consumers, and Plugins) in either Cassandra or PostgreSQL,
+        # and all Kong nodes belonging to the same cluster must connect themselves
+        # to the same database.
+        #
+        # Kong supports the following database versions:
+        # - **PostgreSQL**: 9.5 and above.
+        # - **Cassandra**: 2.2 and above.
+        #
+        # When not using a database, Kong is said to be in "DB-less mode": it will keep
+        # its entities in memory, and each node needs to have this data entered via a
+        # declarative configuration file, which can be specified through the
+        # `declarative_config` property, or via the Admin API using the `/config`
+        # endpoint.
+
+        database = postgres             # Determines which of PostgreSQL or Cassandra
+                                        # this node will use as its datastore.
+                                        # Accepted values are `postgres`,
+                                        # `cassandra`, and `off`.
+
+        pg_host = postgresql             # Host of the Postgres server.
+        pg_port = 5432                  # Port of the Postgres server.
+        pg_timeout = 5000               # Defines the timeout (in ms), for connecting,
+                                        # reading and writing.
+
+        pg_user = kong                  # Postgres user.
+        pg_password = kong                  # Postgres user's password.
+        pg_database = kong              # The database name to connect to.
+
+        #pg_schema =                     # The database schema to use. If unspecified,
+                                        # Kong will respect the `search_path` value of
+                                        # your PostgreSQL instance.
+
+        pg_ssl = off                    # Toggles client-server TLS connections
+                                        # between Kong and PostgreSQL.
+        pg_ssl_verify = off             # Toggles server certificate verification if
+                                        # `pg_ssl` is enabled.
+                                        # See the `lua_ssl_trusted_certificate`
+                                        # setting to specify a certificate authority.
+
+        #pg_max_concurrent_queries = 0   # Sets the maximum number of concurrent queries
+                                        # that can be executing at any given time. This
+                                        # limit is enforced per worker process; the
+                                        # total number of concurrent queries for this
+                                        # node will be will be:
+                                        # `pg_max_concurrent_queries * nginx_worker_processes`.
+                                        #
+                                        # The default value of 0 removes this
+                                        # concurrency limitation.
+
+        #pg_semaphore_timeout = 60000    # Defines the timeout (in ms) after which
+                                        # PostgreSQL query semaphore resource
+                                        # acquisition attempts will fail. Such
+                                        # failures will generally result in the
+                                        # associated proxy or Admin API request
+                                        # failing with an HTTP 500 status code.
+                                        # Detailed discussion of this behavior is
+                                        # available in the online documentation.
+
+        #cassandra_contact_points = 127.0.0.1  # A comma-separated list of contact
+                                              # points to your cluster.
+                                              # You may specify IP addresses or
+                                              # hostnames. Note that the port
+                                              # component of SRV records will be
+                                              # ignored in favor of `cassandra_port`.
+                                              # When connecting to a multi-DC cluster,
+                                              # ensure that contact points from the
+                                              # local datacenter are specified first
+                                              # in this list.
+
+        #cassandra_port = 9042           # The port on which your nodes are listening
+                                        # on. All your nodes and contact points must
+                                        # listen on the same port. Will be created if
+                                        # it doesn't exist.
+
+        #cassandra_keyspace = kong       # The keyspace to use in your cluster.
+
+        #cassandra_consistency = ONE     # Consistency setting to use when reading/
+                                        # writing to the Cassandra cluster.
+                                        #
+        #cassandra_timeout = 5000        # Defines the timeout (in ms) for reading
+                                        # and writing.
+
+        #cassandra_ssl = off             # Toggles client-to-node TLS connections
+                                        # between Kong and Cassandra.
+
+        #cassandra_ssl_verify = off      # Toggles server certificate verification if
+                                        # `cassandra_ssl` is enabled.
+                                        # See the `lua_ssl_trusted_certificate`
+                                        # setting to specify a certificate authority.
+
+        #cassandra_username = kong       # Username when using the
+                                        # `PasswordAuthenticator` scheme.
+
+        #cassandra_password =            # Password when using the
+                                        # `PasswordAuthenticator` scheme.
+
+        #cassandra_lb_policy = RequestRoundRobin  # Load balancing policy to use when
+                                                  # distributing queries across your
+                                                  # Cassandra cluster.
+                                                  # Accepted values are:
+                                                  # `RoundRobin`, `RequestRoundRobin`,
+                                                  # `DCAwareRoundRobin`, and
+                                                  # `RequestDCAwareRoundRobin`.
+                                                  # Policies prefixed with "Request"
+                                                  # make efficient use of established
+                                                  # connections throughout the same
+                                                  # request.
+                                                  # Prefer "DCAware" policies if and
+                                                  # only if you are using a
+                                                  # multi-datacenter cluster.
+
+        #cassandra_local_datacenter =    # When using the `DCAwareRoundRobin`
+                                        # or `RequestDCAwareRoundRobin` load
+                                        # balancing policy, you must specify the name
+                                        # of the local (closest) datacenter for this
+                                        # Kong node.
+
+        #cassandra_refresh_frequency = 60          # Frequency (in seconds) at which
+                                                  # the cluster topology will be
+                                                  # checked for new or decommissioned
+                                                  # nodes.
+                                                  # A value of `0` will disable this
+                                                  # check, and the cluster topology
+                                                  # will never be refreshed.
+
+        #cassandra_repl_strategy = SimpleStrategy  # When migrating for the first time,
+                                                  # Kong will use this setting to
+                                                  # create your keyspace.
+                                                  # Accepted values are
+                                                  # `SimpleStrategy` and
+                                                  # `NetworkTopologyStrategy`.
+
+        #cassandra_repl_factor = 1       # When migrating for the first time, Kong
+                                        # will create the keyspace with this
+                                        # replication factor when using the
+                                        # `SimpleStrategy`.
+
+        #cassandra_data_centers = dc1:2,dc2:3  # When migrating for the first time,
+                                              # will use this setting when using the
+                                              # `NetworkTopologyStrategy`.
+                                              # The format is a comma-separated list
+                                              # made of `<dc_name>:<repl_factor>`.
+
+        #cassandra_schema_consensus_timeout = 10000  # Defines the timeout (in ms) for
+                                                    # the waiting period to reach a
+                                                    # schema consensus between your
+                                                    # Cassandra nodes.
+                                                    # This value is only used during
+                                                    # migrations.
+
+        #declarative_config =           # The path to the declarative configuration
+                                        # file which holds the specification of all
+                                        # entities (Routes, Services, Consumers, etc.)
+                                        # to be used when the `database` is set to
+                                        # `off`.
+                                        #
+                                        # Entities are stored in Kong's in-memory cache,
+                                        # so you must ensure that enough memory is
+                                        # allocated to it via the `mem_cache_size`
+                                        # property. You must also ensure that items
+                                        # in the cache never expire, which means that
+                                        # `db_cache_ttl` should preserve its default
+                                        # value of 0.
+
+        #------------------------------------------------------------------------------
+        # DATASTORE CACHE
+        #------------------------------------------------------------------------------
+
+        # In order to avoid unnecessary communication with the datastore, Kong caches
+        # entities (such as APIs, Consumers, Credentials...) for a configurable period
+        # of time. It also handles invalidations if such an entity is updated.
+        #
+        # This section allows for configuring the behavior of Kong regarding the
+        # caching of such configuration entities.
+
+        #db_update_frequency = 5         # Frequency (in seconds) at which to check for
+                                        # updated entities with the datastore.
+                                        #
+                                        # When a node creates, updates, or deletes an
+                                        # entity via the Admin API, other nodes need
+                                        # to wait for the next poll (configured by
+                                        # this value) to eventually purge the old
+                                        # cached entity and start using the new one.
+
+        #db_update_propagation = 0       # Time (in seconds) taken for an entity in the
+                                        # datastore to be propagated to replica nodes
+                                        # of another datacenter.
+                                        #
+                                        # When in a distributed environment such as
+                                        # a multi-datacenter Cassandra cluster, this
+                                        # value should be the maximum number of
+                                        # seconds taken by Cassandra to propagate a
+                                        # row to other datacenters.
+                                        #
+                                        # When set, this property will increase the
+                                        # time taken by Kong to propagate the change
+                                        # of an entity.
+                                        #
+                                        # Single-datacenter setups or PostgreSQL
+                                        # servers should suffer no such delays, and
+                                        # this value can be safely set to 0.
+
+        #db_cache_ttl = 0                # Time-to-live (in seconds) of an entity from
+                                        # the datastore when cached by this node.
+                                        #
+                                        # Database misses (no entity) are also cached
+                                        # according to this setting.
+                                        #
+                                        # If set to 0 (default), such cached entities
+                                        # or misses never expire.
+
+        #db_resurrect_ttl = 30           # Time (in seconds) for which stale entities
+                                        # from the datastore should be resurrected for
+                                        # when they cannot be refreshed (e.g., the
+                                        # datastore is unreachable). When this TTL
+                                        # expires, a new attempt to refresh the stale
+                                        # entities will be made.
+
+        #db_cache_warmup_entities = services, plugins
+                                        # Entities to be pre-loaded from the datastore
+                                        # into the in-memory cache at Kong start-up.
+                                        # This speeds up the first access of endpoints
+                                        # that use the given entities.
+                                        #
+                                        # When the `services` entity is configured
+                                        # for warmup, the DNS entries for values in
+                                        # its `host` attribute are pre-resolved
+                                        # asynchronously as well.
+                                        #
+                                        # Cache size set in `mem_cache_size` should
+                                        # be set to a value large enough to hold all
+                                        # instances of the specified entities.
+                                        # If the size is insufficient, Kong will log
+                                        # a warning.
+
+        #------------------------------------------------------------------------------
+        # DNS RESOLVER
+        #------------------------------------------------------------------------------
+
+        # By default the DNS resolver will use the standard configuration files
+        # `/etc/hosts` and `/etc/resolv.conf`. The settings in the latter file will be
+        # overridden by the environment variables `LOCALDOMAIN` and `RES_OPTIONS` if
+        # they have been set.
+        #
+        # Kong will resolve hostnames as either `SRV` or `A` records (in that order, and
+        # `CNAME` records will be dereferenced in the process).
+        # In case a name was resolved as an `SRV` record it will also override any given
+        # port number by the `port` field contents received from the DNS server.
+        #
+        # The DNS options `SEARCH` and `NDOTS` (from the `/etc/resolv.conf` file) will
+        # be used to expand short names to fully qualified ones. So it will first try
+        # the entire `SEARCH` list for the `SRV` type, if that fails it will try the
+        # `SEARCH` list for `A`, etc.
+        #
+        # For the duration of the `ttl`, the internal DNS resolver will loadbalance each
+        # request it gets over the entries in the DNS record. For `SRV` records the
+        # `weight` fields will be honored, but it will only use the lowest `priority`
+        # field entries in the record.
+
+        #dns_resolver =                  # Comma separated list of nameservers, each
+                                        # entry in `ip[:port]` format to be used by
+                                        # Kong. If not specified the nameservers in
+                                        # the local `resolv.conf` file will be used.
+                                        # Port defaults to 53 if omitted. Accepts
+                                        # both IPv4 and IPv6 addresses.
+
+        #dns_hostsfile = /etc/hosts      # The hosts file to use. This file is read
+                                        # once and its content is static in memory.
+                                        # To read the file again after modifying it,
+                                        # Kong must be reloaded.
+
+        #dns_order = LAST,SRV,A,CNAME    # The order in which to resolve different
+                                        # record types. The `LAST` type means the
+                                        # type of the last successful lookup (for the
+                                        # specified name). The format is a (case
+                                        # insensitive) comma separated list.
+
+        #dns_valid_ttl =                 # By default, DNS records are cached using
+                                        # the TTL value of a response. If this
+                                        # property receives a value (in seconds), it
+                                        # will override the TTL for all records.
+
+        #dns_stale_ttl = 4               # Defines, in seconds, how long a record will
+                                        # remain in cache past its TTL. This value
+                                        # will be used while the new DNS record is
+                                        # fetched in the background.
+                                        # Stale data will be used from expiry of a
+                                        # record until either the refresh query
+                                        # completes, or the `dns_stale_ttl` number of
+                                        # seconds have passed.
+
+        #dns_not_found_ttl = 30          # TTL in seconds for empty DNS responses and
+                                        # "(3) name error" responses.
+
+        #dns_error_ttl = 1               # TTL in seconds for error responses.
+
+        #dns_no_sync = off               # If enabled, then upon a cache-miss every
+                                        # request will trigger its own dns query.
+                                        # When disabled multiple requests for the
+                                        # same name/type will be synchronised to a
+                                        # single query.
+
+        #------------------------------------------------------------------------------
+        # TUNING & BEHAVIOR
+        #------------------------------------------------------------------------------
+
+        #router_consistency = strict     # Defines whether this node should rebuild its
+                                        # router synchronously or asynchronously (the
+                                        # router is rebuilt every time a Route or a
+                                        # Service is updated via the Admin API or
+                                        # loading a declarative configuration file).
+                                        #
+                                        # Accepted values are:
+                                        #
+                                        # - `strict`: the router will be rebuilt
+                                        #   synchronously, causing incoming requests to
+                                        #   be delayed until the rebuild is finished.
+                                        # - `eventual`: the router will be rebuilt
+                                        #   asynchronously via a recurring background
+                                        #   job running every second inside of each
+                                        #   worker.
+                                        #
+                                        # Note that `strict` ensures that all workers
+                                        # of a given node will always proxy requests
+                                        # with an identical router, but that increased
+                                        # long tail latency can be observed if
+                                        # frequent Routes and Services updates are
+                                        # expected.
+                                        # Using `eventual` will help preventing long
+                                        # tail latency issues in such cases, but may
+                                        # cause workers to route requests differently
+                                        # for a short period of time after Routes and
+                                        # Services updates.
+
+        #router_update_frequency = 1     # Defines how often the router changes are
+                                        # checked with a background job. When a change
+                                        # is detected, a new router will be built. By
+                                        # default we check for changes every second.
+                                        # Raising this value will decrease the load on
+                                        # database servers and result in less jitter
+                                        # in proxy latency, with downside of longer
+                                        # converge time for router updates.
+
+        #------------------------------------------------------------------------------
+        # DEVELOPMENT & MISCELLANEOUS
+        #------------------------------------------------------------------------------
+
+        # Additional settings inherited from lua-nginx-module allowing for more
+        # flexibility and advanced usage.
+        #
+        # See the lua-nginx-module documentation for more information:
+        # https://github.com/openresty/lua-nginx-module
+
+        #lua_ssl_trusted_certificate =   # Absolute path to the certificate
+                                        # authority file for Lua cosockets in PEM
+                                        # format. This certificate will be the one
+                                        # used for verifying Kong's database
+                                        # connections, when `pg_ssl_verify` or
+                                        # `cassandra_ssl_verify` are enabled.
+                                        #
+                                        # See https://github.com/openresty/lua-nginx-module#lua_ssl_trusted_certificate
+
+        #lua_ssl_verify_depth = 1        # Sets the verification depth in the server
+                                        # certificates chain used by Lua cosockets,
+                                        # set by `lua_ssl_trusted_certificate`.
+                                        # This includes the certificates configured
+                                        # for Kong's database connections.
+                                        #
+                                        # See https://github.com/openresty/lua-nginx-module#lua_ssl_verify_depth
+
+        #lua_package_path = ./?.lua;./?/init.lua;  # Sets the Lua module search path
+                                                  # (LUA_PATH). Useful when developing
+                                                  # or using custom plugins not stored
+                                                  # in the default search path.
+                                                  #
+                                                  # See https://github.com/openresty/lua-nginx-module#lua_package_path
+
+        #lua_package_cpath =             # Sets the Lua C module search path
+                                        # (LUA_CPATH).
+                                        #
+                                        # See https://github.com/openresty/lua-nginx-module#lua_package_cpath
+
+        #lua_socket_pool_size = 30       # Specifies the size limit for every cosocket
+                                        # connection pool associated with every remote
+                                        # server.
+                                        #
+                                        # See https://github.com/openresty/lua-nginx-module#lua_socket_pool_size
+    kind: ConfigMap
+    metadata:
+      name: kong-config
+
+
+
+
+  - apiVersion: v1
+    kind: DeploymentConfig
+    metadata:
+      labels:
+        app: kong-api-gateway
+      name: kong
+    spec:
+      replicas: 1
+      revisionHistoryLimit: 10
+      selector:
+        app: kong-api-gateway
+        deploymentconfig: kong
+      strategy:
+        activeDeadlineSeconds: 21600
+        resources: {}
+        rollingParams:
+          intervalSeconds: 1
+          maxSurge: 25%
+          maxUnavailable: 25%
+          timeoutSeconds: 600
+          updatePeriodSeconds: 1
+        type: Rolling
+      template:
+        metadata:
+          labels:
+            app: kong-api-gateway
+            deploymentconfig: kong
+        spec:
+          containers:
+            - env:
+                - name: WAITFOR_HOST
+                  value: postgresql
+                - name: WAITFOR_PORT
+                  value: '5432'
+              image: "kong:latest"
+              imagePullPolicy: Always
+              name: kong
+              ports:
+                - containerPort: 8001
+                  protocol: TCP
+                - containerPort: 8000
+                  protocol: TCP
+                - containerPort: 8443
+                  protocol: TCP
+                - containerPort: 8444
+                  protocol: TCP                                            
+              livenessProbe:
+                failureThreshold: 3
+                initialDelaySeconds: 60
+                periodSeconds: 20
+                successThreshold: 1
+                httpGet:
+                  port: 8001
+                  path: /
+                timeoutSeconds: 15
+              readinessProbe:
+                failureThreshold: 3
+                initialDelaySeconds: 60
+                periodSeconds: 20
+                successThreshold: 1
+                httpGet:
+                  port: 8001
+                  path: /
+                timeoutSeconds: 15
+              resources:
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+              volumeMounts:
+                - name: kong
+                  mountPath: /etc/kong-init
+                  subPath: kong/kong-init
+                - name: kong-config
+                  mountPath: /etc/kong
+          dnsPolicy: ClusterFirst
+          restartPolicy: Always
+          schedulerName: default-scheduler
+          terminationGracePeriodSeconds: 30
+          volumes:
+            - name: kong
+              persistentVolumeClaim:
+                claimName: kong-api-gateway-data
+            - configMap:
+                name: kong-config
+              name: kong-config
+      test: false
+      triggers:
+        - type: ConfigChange
+        - imageChangeParams:
+            automatic: true
+            containerNames:
+              - kong
+            from:
+              kind: ImageStreamTag
+              name: "kong:latest"
+          type: ImageChange
+
+
+
+  - apiVersion: v1
+    kind: BuildConfig
+    metadata:
+      labels:
+        app: kong-api-gateway
+        build: kong
+      name: kong
+    spec:
+      failedBuildsHistoryLimit: 5
+      nodeSelector: null
+      output:
+        to:
+          kind: ImageStreamTag
+          name: 'kong:latest'
+      postCommit: {}
+      resources: {}
+      runPolicy: Serial
+      source:
+        contextDir: kong
+        git:
+          ref: master
+          uri: 'https://github.com/mvilche/kong-api-gateway-openshift.git'
+        type: Git
+      strategy:
+        dockerStrategy:
+          dockerfilePath: Dockerfile.centos7
+        type: Docker
+      successfulBuildsHistoryLimit: 5
+      triggers:
+        - type: ConfigChange
+
+
+
+
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        app: kong-api-gateway
+      name: kong
+    spec:
+      ports:
+        - name: admin
+          port: 8001
+          protocol: TCP
+          targetPort: 8001
+        - name: nginx-secure
+          port: 8443
+          protocol: TCP
+          targetPort: 8443
+        - name: nginx
+          port: 8000
+          protocol: TCP
+          targetPort: 8000
+        - name: admin-secure
+          port: 8444
+          protocol: TCP
+          targetPort: 8444                              
+      selector:
+        app: kong-api-gateway
+        deploymentconfig: kong
+      sessionAffinity: None
+      type: ClusterIP
+
+    
+
+  - apiVersion: v1
+    kind: ImageStream
+    metadata:
+      labels:
+        app: kong-api-gateway
+      name: kong
+    spec: {}
+
+
+########## FIN KONG
+
+#### mongo
+
+
+  - apiVersion: v1
+    data:
+      mongod.conf: |-
+        storage:
+          dbPath: /opt/mongodb-data
+          journal:
+            enabled: true
+        net:
+          port: 27017
+          bindIp: 0.0.0.0 
+    kind: ConfigMap
+    metadata:
+      name: mongo-config
+
+
+  - apiVersion: v1
+    kind: DeploymentConfig
+    metadata:
+      labels:
+        app: kong-api-gateway
+      name: mongo
+    spec:
+      replicas: 1
+      revisionHistoryLimit: 10
+      selector:
+        app: kong-api-gateway
+        deploymentconfig: mongo
+      strategy:
+        activeDeadlineSeconds: 21600
+        resources: {}
+        type: Recreate
+      template:
+        metadata:
+          labels:
+            app: kong-api-gateway
+            deploymentconfig: mongo
+        spec:
+          containers:
+            - image: "mongo:latest"
+              imagePullPolicy: Always
+              command:
+              - bash
+              - "-c"
+              - |
+                /opt/mongodb/bin/mongod --config /opt/mongodb-config/mongod.conf              
+              name: mongo
+              ports:
+                - containerPort: 27017
+                  protocol: TCP
+              livenessProbe:
+                exec:
+                  command:
+                  - bash
+                  - "-c"
+                  - |
+                    nc -z -v -w5 127.0.0.1 27017
+                    if [ "$?" == 0 ]; then
+                    exit 0
+                    else
+                    exit 1
+                    fi
+                initialDelaySeconds: 90
+                timeoutSeconds: 5
+              readinessProbe:
+                exec:
+                  command:
+                  - bash
+                  - "-c"
+                  - |
+                    nc -z -v -w5 127.0.0.1 27017
+                    if [ "$?" == 0 ]; then
+                    exit 0
+                    else
+                    exit 1
+                    fi
+                initialDelaySeconds: 30
+                timeoutSeconds: 15
+              resources:
+                limits:
+                  cpu: 1024m
+                  memory: 512Mi                
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+              volumeMounts:
+              - name: mongo
+                mountPath: /opt/mongodb-data
+                subPath: mongodb
+              - name: mongo-config
+                mountPath: /opt/mongodb-config
+          dnsPolicy: ClusterFirst
+          restartPolicy: Always
+          schedulerName: default-scheduler
+          terminationGracePeriodSeconds: 30
+          volumes:
+            - name: mongo
+              persistentVolumeClaim:
+                claimName: kong-api-gateway-data
+            - configMap:
+                name: mongo-config
+              name: mongo-config
+      test: false
+      triggers:
+        - type: ConfigChange
+        - imageChangeParams:
+            automatic: true
+            containerNames:
+              - mongo
+            from:
+              kind: ImageStreamTag
+              name: "mongo:latest"
+          type: ImageChange
+
+
+
+  - apiVersion: v1
+    kind: BuildConfig
+    metadata:
+      labels:
+        app: kong-api-gateway
+        build: mongo
+      name: mongo
+    spec:
+      failedBuildsHistoryLimit: 5
+      nodeSelector: null
+      output:
+        to:
+          kind: ImageStreamTag
+          name: 'mongo:latest'
+      postCommit: {}
+      resources: {}
+      runPolicy: Serial
+      source:
+        contextDir: mongo
+        git:
+          ref: master
+          uri: 'https://github.com/mvilche/kong-api-gateway-openshift.git'
+        type: Git
+      strategy:
+        dockerStrategy:
+          dockerfilePath: Dockerfile.centos7
+        type: Docker
+      successfulBuildsHistoryLimit: 5
+      triggers:
+        - type: ConfigChange
+
+
+
+
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        app: kong-api-gateway
+      name: mongo
+    spec:
+      ports:
+        - name: client
+          port: 27017
+          protocol: TCP
+          targetPort: 27017                             
+      selector:
+        app: kong-api-gateway
+        deploymentconfig: mongo
+      sessionAffinity: None
+      type: ClusterIP
+
+    
+
+  - apiVersion: v1
+    kind: ImageStream
+    metadata:
+      labels:
+        app: kong-api-gateway
+      name: mongo
+    spec: {}
+
+### fin mongo
+
+
+
+### COMIENZO postgresql
+  - apiVersion: v1
+    kind: DeploymentConfig
+    metadata:
+      labels:
+        app: kong-api-gateway
+      name: postgresql
+    spec:
+      replicas: 1
+      selector:
+        app: kong-api-gateway
+        deploymentconfig: postgresql
+      strategy:
+        activeDeadlineSeconds: 21600
+        resources: {}
+        type: Recreate
+      template:
+        metadata:
+          labels:
+            app: kong-api-gateway
+            deploymentconfig: postgresql
+        spec:
+          containers:
+            - env:
+                - name: POSTGRESQL_USER
+                  value: kong
+                - name: POSTGRESQL_PASSWORD
+                  value: kong
+                - name: POSTGRESQL_DATABASE
+                  value: kong
+              image: postgresql:96
+              imagePullPolicy: Always
+              name: postgresql
+              ports:
+                - containerPort: 5432
+                  protocol: TCP
+              readinessProbe:
+                exec:
+                  command:
+                  - /bin/sh
+                  - -i
+                  - -c
+                  - psql -h 127.0.0.1 -U $POSTGRESQL_USER -q -d $POSTGRESQL_DATABASE -c 'SELECT 1'
+                failureThreshold: 3
+                initialDelaySeconds: 60
+                periodSeconds: 10
+                successThreshold: 1
+                timeoutSeconds: 1
+              resources:
+                limits:
+                  memory: 256Mi
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+              volumeMounts:
+                - mountPath: /var/lib/pgsql/data
+                  name: postgresql
+                  subPath: postgresql
+          dnsPolicy: ClusterFirst
+          restartPolicy: Always
+          schedulerName: default-scheduler
+          securityContext: {}
+          terminationGracePeriodSeconds: 30
+          volumes:
+            - name: postgresql
+              persistentVolumeClaim:
+                claimName: kong-api-gateway-data
+      test: false
+      triggers:
+        - type: ConfigChange
+        - imageChangeParams:
+            automatic: true
+            containerNames:
+              - postgresql
+            from:
+              kind: ImageStreamTag
+              name: 'postgresql:96'
+          type: ImageChange
+
+
+
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        app: kong-api-gateway
+      name: postgresql
+    spec:
+      ports:
+        - name: tcp
+          port: 5432
+          protocol: TCP
+          targetPort: 5432
+      selector:
+        app: kong-api-gateway
+        deploymentconfig: postgresql
+      sessionAffinity: None
+      type: ClusterIP
+
+
+
+  - apiVersion: v1
+    kind: ImageStream
+    metadata:
+        name: postgresql
+    spec:
+        tags:
+          - name: '96'
+            from:
+                kind: DockerImage
+                name: centos/postgresql-96-centos7:latest
+
+
+###### FIN postgresql
+
+
+
+
+#### comienzo konga
+
+
+  - apiVersion: v1
+    data:
+      env: |-
+        PORT=1337
+        NODE_ENV=production
+        KONGA_HOOK_TIMEOUT=120000
+        DB_ADAPTER=mongo
+        DB_URI=mongodb://mongo:27017/konga
+        KONGA_LOG_LEVEL=warn
+        TOKEN_SECRET=some_secret_token
+    kind: ConfigMap
+    metadata:
+      name: konga-config
+
+
+
+  - apiVersion: v1
+    kind: DeploymentConfig
+    metadata:
+      labels:
+        app: kong-api-gateway
+      name: konga
+    spec:
+      replicas: 1
+      revisionHistoryLimit: 10
+      selector:
+        app: kong-api-gateway
+        deploymentconfig: konga
+      strategy:
+        activeDeadlineSeconds: 21600
+        resources: {}
+        rollingParams:
+          intervalSeconds: 1
+          maxSurge: 25%
+          maxUnavailable: 25%
+          timeoutSeconds: 600
+          updatePeriodSeconds: 1
+        type: Rolling
+      template:
+        metadata:
+          labels:
+            app: kong-api-gateway
+            deploymentconfig: konga
+        spec:
+          containers:
+            - env:
+                - name: WAITFOR_HOST
+                  value: mongo
+                - name: WAITFOR_PORT
+                  value: '27017'
+              image: "konga:latest"
+              imagePullPolicy: Always
+              name: konga
+              ports:
+                - containerPort: 1337
+                  protocol: TCP                                         
+              livenessProbe:
+                failureThreshold: 3
+                initialDelaySeconds: 60
+                periodSeconds: 20
+                successThreshold: 1
+                httpGet:
+                  port: 1337
+                  path: /
+                timeoutSeconds: 15
+              readinessProbe:
+                failureThreshold: 3
+                initialDelaySeconds: 60
+                periodSeconds: 20
+                successThreshold: 1
+                httpGet:
+                  port: 1337
+                  path: /
+                timeoutSeconds: 15
+              resources:
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+              volumeMounts:
+                - mountPath: /opt/konga/custom_config
+                  name: konga-config
+          dnsPolicy: ClusterFirst
+          restartPolicy: Always
+          schedulerName: default-scheduler
+          terminationGracePeriodSeconds: 30
+          volumes:
+            - configMap:
+                name: konga-config
+              name: konga-config
+      test: false
+      triggers:
+        - type: ConfigChange
+        - imageChangeParams:
+            automatic: true
+            containerNames:
+              - konga
+            from:
+              kind: ImageStreamTag
+              name: "konga:latest"
+          type: ImageChange
+
+
+
+  - apiVersion: v1
+    kind: BuildConfig
+    metadata:
+      labels:
+        app: kong-api-gateway
+        build: konga
+      name: konga
+    spec:
+      failedBuildsHistoryLimit: 5
+      nodeSelector: null
+      output:
+        to:
+          kind: ImageStreamTag
+          name: 'konga:latest'
+      postCommit: {}
+      resources: {}
+      runPolicy: Serial
+      source:
+        contextDir: konga
+        git:
+          ref: master
+          uri: 'https://github.com/mvilche/kong-api-gateway-openshift.git'
+        type: Git
+      strategy:
+        dockerStrategy:
+          dockerfilePath: Dockerfile.alpine
+        type: Docker
+      successfulBuildsHistoryLimit: 5
+      triggers:
+        - type: ConfigChange
+
+
+
+
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        app: kong-api-gateway
+      name: konga
+    spec:
+      ports:
+        - name: http
+          port: 1337
+          protocol: TCP
+          targetPort: 1337                            
+      selector:
+        app: kong-api-gateway
+        deploymentconfig: konga
+      sessionAffinity: None
+      type: ClusterIP
+
+    
+
+  - apiVersion: v1
+    kind: ImageStream
+    metadata:
+      labels:
+        app: kong-api-gateway
+      name: konga
+    spec: {}
+
+
+########## FIN konga
+
+  - apiVersion: v1
+    data:
+      redis.conf: |-
+        ########## redis
+
+
+
+        # This file should be here /etc/redis
+        # Edit all lines with CUSTOM comment
+
+        # Redis configuration file example
+
+        # Note on units: when memory size is needed, it is possible to specify
+        # it in the usual form of 1k 5GB 4M and so forth:
+        #
+        # 1k => 1000 bytes
+        # 1kb => 1024 bytes
+        # 1m => 1000000 bytes
+        # 1mb => 1024*1024 bytes
+        # 1g => 1000000000 bytes
+        # 1gb => 1024*1024*1024 bytes
+        #
+        # units are case insensitive so 1GB 1Gb 1gB are all the same.
+
+        # By default Redis does not run as a daemon. Use 'yes' if you need it.
+        # Note that Redis will write a pid file in /var/run/redis.pid when daemonized.
+        daemonize no
+
+        # When running daemonized, Redis writes a pid file in /var/run/redis.pid by
+        # default. You can specify a custom pid file location here.
+        # CUSTOM
+        pidfile /opt/redis.pid
+
+        # Accept connections on the specified port, default is 6379.
+        # If port 0 is specified Redis will not listen on a TCP socket.
+        # CUSTOM
+        port 6379
+
+        # If you want you can bind a single interface, if the bind option is not
+        # specified all the interfaces will listen for incoming connections.
+        #
+        bind 0.0.0.0
+
+        # Specify the path for the unix socket that will be used to listen for
+        # incoming connections. There is no default, so Redis will not listen
+        # on a unix socket when not specified.
+        #
+        # unixsocket /var/run/redis/redis.sock
+        # unixsocketperm 755
+
+        # Close the connection after a client is idle for N seconds (0 to disable)
+        timeout 0
+
+        # Set server verbosity to 'debug'
+        # it can be one of:
+        # debug (a lot of information, useful for development/testing)
+        # verbose (many rarely useful info, but not a mess like the debug level)
+        # notice (moderately verbose, what you want in production probably)
+        # warning (only very important / critical messages are logged)
+        loglevel verbose
+
+        # Specify the log file name. Also 'stdout' can be used to force
+        # Redis to log on the standard output. Note that if you use standard
+        # output for logging but daemonize, logs will be sent to /dev/null
+        # CUSTOM
+        logfile /dev/stdout
+
+        # To enable logging to the system logger, just set 'syslog-enabled' to yes,
+        # and optionally update the other syslog parameters to suit your needs.
+        # syslog-enabled no
+
+        # Specify the syslog identity.
+        # syslog-ident redis
+
+        # Specify the syslog facility.  Must be USER or between LOCAL0-LOCAL7.
+        # syslog-facility local0
+
+        # Set the number of databases. The default database is DB 0, you can select
+        # a different one on a per-connection basis using SELECT <dbid> where
+        # dbid is a number between 0 and 'databases'-1
+        databases 16
+
+        ################################ SNAPSHOTTING  #################################
+        #
+        # Save the DB on disk:
+        #
+        #   save <seconds> <changes>
+        #
+        #   Will save the DB if both the given number of seconds and the given
+        #   number of write operations against the DB occurred.
+        #
+        #   In the example below the behaviour will be to save:
+        #   after 900 sec (15 min) if at least 1 key changed
+        #   after 300 sec (5 min) if at least 10 keys changed
+        #   after 60 sec if at least 10000 keys changed
+        #
+        #   Note: you can disable saving at all commenting all the "save" lines.
+        #
+        #   It is also possible to remove all the previously configured save
+        #   points by adding a save directive with a single empty string argument
+        #   like in the following example:
+        #
+        #   save ""
+
+        save 900 1
+        save 300 10
+        save 60 10000
+
+        # By default Redis will stop accepting writes if RDB snapshots are enabled
+        # (at least one save point) and the latest background save failed.
+        # This will make the user aware (in an hard way) that data is not persisting
+        # on disk properly, otherwise chances are that no one will notice and some
+        # distater will happen.
+        #
+        # If the background saving process will start working again Redis will
+        # automatically allow writes again.
+        #
+        # However if you have setup your proper monitoring of the Redis server
+        # and persistence, you may want to disable this feature so that Redis will
+        # continue to work as usually even if there are problems with disk,
+        # permissions, and so forth.
+        stop-writes-on-bgsave-error yes
+
+        # Compress string objects using LZF when dump .rdb databases?
+        # For default that's set to 'yes' as it's almost always a win.
+        # If you want to save some CPU in the saving child set it to 'no' but
+        # the dataset will likely be bigger if you have compressible values or keys.
+        rdbcompression yes
+
+        # Since verison 5 of RDB a CRC64 checksum is placed at the end of the file.
+        # This makes the format more resistant to corruption but there is a performance
+        # hit to pay (around 10%) when saving and loading RDB files, so you can disable it
+        # for maximum performances.
+        #
+        # RDB files created with checksum disabled have a checksum of zero that will
+        # tell the loading code to skip the check.
+        rdbchecksum yes
+
+        # The filename where to dump the DB
+        # CUSTOM
+        dbfilename dump-railstom-production.rdb
+
+        # The working directory.
+        #
+        # The DB will be written inside this directory, with the filename specified
+        # above using the 'dbfilename' configuration directive.
+        # 
+        # Also the Append Only File will be created inside this directory.
+        # 
+        # Note that you must specify a directory here, not a file name.
+        dir /opt/redis
+
+        ################################# REPLICATION #################################
+
+        # Master-Slave replication. Use slaveof to make a Redis instance a copy of
+        # another Redis server. Note that the configuration is local to the slave
+        # so for example it is possible to configure the slave to save the DB with a
+        # different interval, or to listen to another port, and so on.
+        #
+        # slaveof <masterip> <masterport>
+
+        # If the master is password protected (using the "requirepass" configuration
+        # directive below) it is possible to tell the slave to authenticate before
+        # starting the replication synchronization process, otherwise the master will
+        # refuse the slave request.
+        #
+        # masterauth <master-password>
+
+        # When a slave lost the connection with the master, or when the replication
+        # is still in progress, the slave can act in two different ways:
+        #
+        # 1) if slave-serve-stale-data is set to 'yes' (the default) the slave will
+        #    still reply to client requests, possibly with out of date data, or the
+        #    data set may just be empty if this is the first synchronization.
+        #
+        # 2) if slave-serve-stale data is set to 'no' the slave will reply with
+        #    an error "SYNC with master in progress" to all the kind of commands
+        #    but to INFO and SLAVEOF.
+        #
+        slave-serve-stale-data yes
+
+        # You can configure a slave instance to accept writes or not. Writing against
+        # a slave instance may be useful to store some ephemeral data (because data
+        # written on a slave will be easily deleted after resync with the master) but
+        # may also cause problems if clients are writing to it because of a
+        # misconfiguration.
+        #
+        # Since Redis 2.6 by default slaves are read-only.
+        #
+        # Note: read only slaves are not designed to be exposed to untrusted clients
+        # on the internet. It's just a protection layer against misuse of the instance.
+        # Still a read only slave exports by default all the administrative commands
+        # such as CONFIG, DEBUG, and so forth. To a limited extend you can improve
+        # security of read only slaves using 'rename-command' to shadow all the
+        # administrative / dangerous commands.
+        slave-read-only yes
+
+        # Slaves send PINGs to server in a predefined interval. It's possible to change
+        # this interval with the repl_ping_slave_period option. The default value is 10
+        # seconds.
+        #
+        # repl-ping-slave-period 10
+
+        # The following option sets a timeout for both Bulk transfer I/O timeout and
+        # master data or ping response timeout. The default value is 60 seconds.
+        #
+        # It is important to make sure that this value is greater than the value
+        # specified for repl-ping-slave-period otherwise a timeout will be detected
+        # every time there is low traffic between the master and the slave.
+        #
+        # repl-timeout 60
+
+        # The slave priority is an integer number published by Redis in the INFO output.
+        # It is used by Redis Sentinel in order to select a slave to promote into a
+        # master if the master is no longer working correctly.
+        #
+        # A slave with a low priority number is considered better for promotion, so
+        # for instance if there are three slaves with priority 10, 100, 25 Sentinel will
+        # pick the one wtih priority 10, that is the lowest.
+        #
+        # However a special priority of 0 marks the slave as not able to perform the
+        # role of master, so a slave with priority of 0 will never be selected by
+        # Redis Sentinel for promotion.
+        #
+        # By default the priority is 100.
+        slave-priority 100
+
+        ################################## SECURITY ###################################
+
+        # Require clients to issue AUTH <PASSWORD> before processing any other
+        # commands.  This might be useful in environments in which you do not trust
+        # others with access to the host running redis-server.
+        #
+        # This should stay commented out for backward compatibility and because most
+        # people do not need auth (e.g. they run their own servers).
+        # 
+        # Warning: since Redis is pretty fast an outside user can try up to
+        # 150k passwords per second against a good box. This means that you should
+        # use a very strong password otherwise it will be very easy to break.
+        #
+        # requirepass foobared
+
+        # Command renaming.
+        #
+        # It is possible to change the name of dangerous commands in a shared
+        # environment. For instance the CONFIG command may be renamed into something
+        # of hard to guess so that it will be still available for internal-use
+        # tools but not available for general clients.
+        #
+        # Example:
+        #
+        # rename-command CONFIG b840fc02d524045429941cc15f59e41cb7be6c52
+        #
+        # It is also possible to completely kill a command renaming it into
+        # an empty string:
+        #
+        # rename-command CONFIG ""
+
+        ################################### LIMITS ####################################
+
+        # Set the max number of connected clients at the same time. By default
+        # this limit is set to 10000 clients, however if the Redis server is not
+        # able ot configure the process file limit to allow for the specified limit
+        # the max number of allowed clients is set to the current file limit
+        # minus 32 (as Redis reserves a few file descriptors for internal uses).
+        #
+        # Once the limit is reached Redis will close all the new connections sending
+        # an error 'max number of clients reached'.
+        #
+        # maxclients 10000
+
+        # Don't use more memory than the specified amount of bytes.
+        # When the memory limit is reached Redis will try to remove keys
+        # accordingly to the eviction policy selected (see maxmemmory-policy).
+        #
+        # If Redis can't remove keys according to the policy, or if the policy is
+        # set to 'noeviction', Redis will start to reply with errors to commands
+        # that would use more memory, like SET, LPUSH, and so on, and will continue
+        # to reply to read-only commands like GET.
+        #
+        # This option is usually useful when using Redis as an LRU cache, or to set
+        # an hard memory limit for an instance (using the 'noeviction' policy).
+        #
+        # WARNING: If you have slaves attached to an instance with maxmemory on,
+        # the size of the output buffers needed to feed the slaves are subtracted
+        # from the used memory count, so that network problems / resyncs will
+        # not trigger a loop where keys are evicted, and in turn the output
+        # buffer of slaves is full with DELs of keys evicted triggering the deletion
+        # of more keys, and so forth until the database is completely emptied.
+        #
+        # In short... if you have slaves attached it is suggested that you set a lower
+        # limit for maxmemory so that there is some free RAM on the system for slave
+        # output buffers (but this is not needed if the policy is 'noeviction').
+        #
+        # maxmemory <bytes>
+
+        # MAXMEMORY POLICY: how Redis will select what to remove when maxmemory
+        # is reached? You can select among five behavior:
+        # 
+        # volatile-lru -> remove the key with an expire set using an LRU algorithm
+        # allkeys-lru -> remove any key accordingly to the LRU algorithm
+        # volatile-random -> remove a random key with an expire set
+        # allkeys-random -> remove a random key, any key
+        # volatile-ttl -> remove the key with the nearest expire time (minor TTL)
+        # noeviction -> don't expire at all, just return an error on write operations
+        # 
+        # Note: with all the kind of policies, Redis will return an error on write
+        #       operations, when there are not suitable keys for eviction.
+        #
+        #       At the date of writing this commands are: set setnx setex append
+        #       incr decr rpush lpush rpushx lpushx linsert lset rpoplpush sadd
+        #       sinter sinterstore sunion sunionstore sdiff sdiffstore zadd zincrby
+        #       zunionstore zinterstore hset hsetnx hmset hincrby incrby decrby
+        #       getset mset msetnx exec sort
+        #
+        # The default is:
+        #
+        # maxmemory-policy volatile-lru
+
+        # LRU and minimal TTL algorithms are not precise algorithms but approximated
+        # algorithms (in order to save memory), so you can select as well the sample
+        # size to check. For instance for default Redis will check three keys and
+        # pick the one that was used less recently, you can change the sample size
+        # using the following configuration directive.
+        #
+        # maxmemory-samples 3
+
+        ############################## APPEND ONLY MODE ###############################
+
+        # By default Redis asynchronously dumps the dataset on disk. This mode is
+        # good enough in many applications, but an issue with the Redis process or
+        # a power outage may result into a few minutes of writes lost (depending on
+        # the configured save points).
+        #
+        # The Append Only File is an alternative persistence mode that provides
+        # much better durability. For instance using the default data fsync policy
+        # (see later in the config file) Redis can lose just one second of writes in a
+        # dramatic event like a server power outage, or a single write if something
+        # wrong with the Redis process itself happens, but the operating system is
+        # still running correctly.
+        #
+        # AOF and RDB persistence can be enabled at the same time without problems.
+        # If the AOF is enabled on startup Redis will load the AOF, that is the file
+        # with the better durability guarantees.
+        #
+        # Please check http://redis.io/topics/persistence for more information.
+
+        appendonly no
+
+        # The name of the append only file (default: "appendonly.aof")
+        # appendfilename appendonly.aof
+
+        # The fsync() call tells the Operating System to actually write data on disk
+        # instead to wait for more data in the output buffer. Some OS will really flush 
+        # data on disk, some other OS will just try to do it ASAP.
+        #
+        # Redis supports three different modes:
+        #
+        # no: don't fsync, just let the OS flush the data when it wants. Faster.
+        # always: fsync after every write to the append only log . Slow, Safest.
+        # everysec: fsync only one time every second. Compromise.
+        #
+        # The default is "everysec" that's usually the right compromise between
+        # speed and data safety. It's up to you to understand if you can relax this to
+        # "no" that will let the operating system flush the output buffer when
+        # it wants, for better performances (but if you can live with the idea of
+        # some data loss consider the default persistence mode that's snapshotting),
+        # or on the contrary, use "always" that's very slow but a bit safer than
+        # everysec.
+        #
+        # More details please check the following article:
+        # http://antirez.com/post/redis-persistence-demystified.html
+        #
+        # If unsure, use "everysec".
+
+        # appendfsync always
+        appendfsync everysec
+        # appendfsync no
+
+        # When the AOF fsync policy is set to always or everysec, and a background
+        # saving process (a background save or AOF log background rewriting) is
+        # performing a lot of I/O against the disk, in some Linux configurations
+        # Redis may block too long on the fsync() call. Note that there is no fix for
+        # this currently, as even performing fsync in a different thread will block
+        # our synchronous write(2) call.
+        #
+        # In order to mitigate this problem it's possible to use the following option
+        # that will prevent fsync() from being called in the main process while a
+        # BGSAVE or BGREWRITEAOF is in progress.
+        #
+        # This means that while another child is saving the durability of Redis is
+        # the same as "appendfsync none", that in practical terms means that it is
+        # possible to lost up to 30 seconds of log in the worst scenario (with the
+        # default Linux settings).
+        # 
+        # If you have latency problems turn this to "yes". Otherwise leave it as
+        # "no" that is the safest pick from the point of view of durability.
+        no-appendfsync-on-rewrite no
+
+        # Automatic rewrite of the append only file.
+        # Redis is able to automatically rewrite the log file implicitly calling
+        # BGREWRITEAOF when the AOF log size will growth by the specified percentage.
+        # 
+        # This is how it works: Redis remembers the size of the AOF file after the
+        # latest rewrite (or if no rewrite happened since the restart, the size of
+        # the AOF at startup is used).
+        #
+        # This base size is compared to the current size. If the current size is
+        # bigger than the specified percentage, the rewrite is triggered. Also
+        # you need to specify a minimal size for the AOF file to be rewritten, this
+        # is useful to avoid rewriting the AOF file even if the percentage increase
+        # is reached but it is still pretty small.
+        #
+        # Specify a percentage of zero in order to disable the automatic AOF
+        # rewrite feature.
+
+        auto-aof-rewrite-percentage 100
+        auto-aof-rewrite-min-size 64mb
+
+        ################################ LUA SCRIPTING  ###############################
+
+        # Max execution time of a Lua script in milliseconds.
+        #
+        # If the maximum execution time is reached Redis will log that a script is
+        # still in execution after the maximum allowed time and will start to
+        # reply to queries with an error.
+        #
+        # When a long running script exceed the maximum execution time only the
+        # SCRIPT KILL and SHUTDOWN NOSAVE commands are available. The first can be
+        # used to stop a script that did not yet called write commands. The second
+        # is the only way to shut down the server in the case a write commands was
+        # already issue by the script but the user don't want to wait for the natural
+        # termination of the script.
+        #
+        # Set it to 0 or a negative value for unlimited execution without warnings.
+        lua-time-limit 5000
+
+        ################################## SLOW LOG ###################################
+
+        # The Redis Slow Log is a system to log queries that exceeded a specified
+        # execution time. The execution time does not include the I/O operations
+        # like talking with the client, sending the reply and so forth,
+        # but just the time needed to actually execute the command (this is the only
+        # stage of command execution where the thread is blocked and can not serve
+        # other requests in the meantime).
+        # 
+        # You can configure the slow log with two parameters: one tells Redis
+        # what is the execution time, in microseconds, to exceed in order for the
+        # command to get logged, and the other parameter is the length of the
+        # slow log. When a new command is logged the oldest one is removed from the
+        # queue of logged commands.
+
+        # The following time is expressed in microseconds, so 1000000 is equivalent
+        # to one second. Note that a negative number disables the slow log, while
+        # a value of zero forces the logging of every command.
+        slowlog-log-slower-than 10000
+
+        # There is no limit to this length. Just be aware that it will consume memory.
+        # You can reclaim memory used by the slow log with SLOWLOG RESET.
+        slowlog-max-len 128
+
+        ############################### ADVANCED CONFIG ###############################
+
+        # Hashes are encoded using a memory efficient data structure when they have a
+        # small number of entries, and the biggest entry does not exceed a given
+        # threshold. These thresholds can be configured using the following directives.
+        hash-max-ziplist-entries 512
+        hash-max-ziplist-value 64
+
+        # Similarly to hashes, small lists are also encoded in a special way in order
+        # to save a lot of space. The special representation is only used when
+        # you are under the following limits:
+        list-max-ziplist-entries 512
+        list-max-ziplist-value 64
+
+        # Sets have a special encoding in just one case: when a set is composed
+        # of just strings that happens to be integers in radix 10 in the range
+        # of 64 bit signed integers.
+        # The following configuration setting sets the limit in the size of the
+        # set in order to use this special memory saving encoding.
+        set-max-intset-entries 512
+
+        # Similarly to hashes and lists, sorted sets are also specially encoded in
+        # order to save a lot of space. This encoding is only used when the length and
+        # elements of a sorted set are below the following limits:
+        zset-max-ziplist-entries 128
+        zset-max-ziplist-value 64
+
+        # Active rehashing uses 1 millisecond every 100 milliseconds of CPU time in
+        # order to help rehashing the main Redis hash table (the one mapping top-level
+        # keys to values). The hash table implementation Redis uses (see dict.c)
+        # performs a lazy rehashing: the more operation you run into an hash table
+        # that is rehashing, the more rehashing "steps" are performed, so if the
+        # server is idle the rehashing is never complete and some more memory is used
+        # by the hash table.
+        # 
+        # The default is to use this millisecond 10 times every second in order to
+        # active rehashing the main dictionaries, freeing memory when possible.
+        #
+        # If unsure:
+        # use "activerehashing no" if you have hard latency requirements and it is
+        # not a good thing in your environment that Redis can reply form time to time
+        # to queries with 2 milliseconds delay.
+        #
+        # use "activerehashing yes" if you don't have such hard requirements but
+        # want to free memory asap when possible.
+        activerehashing yes
+
+        # The client output buffer limits can be used to force disconnection of clients
+        # that are not reading data from the server fast enough for some reason (a
+        # common reason is that a Pub/Sub client can't consume messages as fast as the
+        # publisher can produce them).
+        #
+        # The limit can be set differently for the three different classes of clients:
+        #
+        # normal -> normal clients
+        # slave  -> slave clients and MONITOR clients
+        # pubsub -> clients subcribed to at least one pubsub channel or pattern
+        #
+        # The syntax of every client-output-buffer-limit directive is the following:
+        #
+        # client-output-buffer-limit <class> <hard limit> <soft limit> <soft seconds>
+        #
+        # A client is immediately disconnected once the hard limit is reached, or if
+        # the soft limit is reached and remains reached for the specified number of
+        # seconds (continuously).
+        # So for instance if the hard limit is 32 megabytes and the soft limit is
+        # 16 megabytes / 10 seconds, the client will get disconnected immediately
+        # if the size of the output buffers reach 32 megabytes, but will also get
+        # disconnected if the client reaches 16 megabytes and continuously overcomes
+        # the limit for 10 seconds.
+        #
+        # By default normal clients are not limited because they don't receive data
+        # without asking (in a push way), but just after a request, so only
+        # asynchronous clients may create a scenario where data is requested faster
+        # than it can read.
+        #
+        # Instead there is a default limit for pubsub and slave clients, since
+        # subscribers and slaves receive data in a push fashion.
+        #
+        # Both the hard or the soft limit can be disabled just setting it to zero.
+        client-output-buffer-limit normal 0 0 0
+        client-output-buffer-limit slave 256mb 64mb 60
+        client-output-buffer-limit pubsub 32mb 8mb 60
+
+        ################################## INCLUDES ###################################
+
+        # Include one or more other config files here.  This is useful if you
+        # have a standard template that goes to all Redis server but also need
+        # to customize a few per-server settings.  Include files can include
+        # other files, so use this wisely.
+        #
+        # include /path/to/local.conf
+        # include /path/to/other.conf
+    kind: ConfigMap
+    metadata:
+      name: redis-config        
+
+
+
+
+  - apiVersion: v1
+    kind: DeploymentConfig
+    metadata:
+      labels:
+        app: kong-api-gateway
+      name: redis
+    spec:
+      replicas: 1
+      revisionHistoryLimit: 10
+      selector:
+        app: kong-api-gateway
+        deploymentconfig: redis
+      strategy:
+        activeDeadlineSeconds: 21600
+        resources: {}
+        rollingParams:
+          intervalSeconds: 1
+          maxSurge: 25%
+          maxUnavailable: 25%
+          timeoutSeconds: 600
+          updatePeriodSeconds: 1
+        type: Rolling
+      template:
+        metadata:
+          labels:
+            app: kong-api-gateway
+            deploymentconfig: redis
+        spec:
+          containers:
+            - image: "redis:latest"
+              imagePullPolicy: Always
+              name: redis
+              ports:
+                - containerPort: 6379
+                  protocol: TCP
+              resources:
+                limits:
+                  cpu: 500m
+                  memory: 128Mi
+              livenessProbe:
+                exec:
+                  command:
+                  - sh
+                  - "-c"
+                  - |
+                    nc -z -v -w5 127.0.0.1 6379
+                    if [ "$?" == 0 ]; then
+                    exit 0
+                    else
+                    exit 1
+                    fi
+                initialDelaySeconds: 90
+                timeoutSeconds: 5
+              readinessProbe:
+                exec:
+                  command:
+                  - sh
+                  - "-c"
+                  - |
+                    nc -z -v -w5 127.0.0.1 6379
+                    if [ "$?" == 0 ]; then
+                    exit 0
+                    else
+                    exit 1
+                    fi
+                initialDelaySeconds: 30
+                timeoutSeconds: 15                  
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+              volumeMounts:
+              - name: redis
+                mountPath: /opt/redis
+                subPath: redis
+              - name: redis-config
+                mountPath: /opt/redis-config               
+          volumes:
+            - name: redis
+              persistentVolumeClaim:
+                claimName: kong-api-gateway-data
+            - configMap:
+                name: redis-config
+              name: redis-config                        
+          dnsPolicy: ClusterFirst
+          restartPolicy: Always
+          schedulerName: default-scheduler
+          terminationGracePeriodSeconds: 30
+      test: false
+      triggers:
+        - type: ConfigChange
+        - imageChangeParams:
+            automatic: true
+            containerNames:
+              - redis
+            from:
+              kind: ImageStreamTag
+              name: "redis:latest"
+          type: ImageChange
+
+
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        app: kong-api-gateway
+      name: redis
+    spec:
+      ports:
+        - name: http
+          port: 6379
+          protocol: TCP
+          targetPort: 6379
+      selector:
+        app: kong-api-gateway
+        deploymentconfig: redis
+      sessionAffinity: None
+      type: ClusterIP
+
+
+  - apiVersion: v1
+    kind: BuildConfig
+    metadata:
+      labels:
+        app: kong-api-gateway
+        build: redis
+      name: redis
+    spec:
+      failedBuildsHistoryLimit: 5
+      nodeSelector: null
+      output:
+        to:
+          kind: ImageStreamTag
+          name: 'redis:latest'
+      postCommit: {}
+      resources: {}
+      runPolicy: Serial
+      source:
+        contextDir: redis
+        git:
+          ref: master
+          uri: 'https://github.com/mvilche/kong-api-gateway-openshift.git'
+        type: Git
+      strategy:
+        dockerStrategy:
+          dockerfilePath: Dockerfile
+        type: Docker
+      successfulBuildsHistoryLimit: 5
+      triggers:
+        - type: ConfigChange
+
+  - apiVersion: v1
+    kind: ImageStream
+    metadata:
+      labels:
+        app: kong-api-gateway
+      name: redis
+    spec: {}
+
+### INICIO PROMETHEUS
+
+
+  - apiVersion: v1
+    data:
+      prometheus.yml: |-
+        # my global config
+        global:
+          scrape_interval:     15s # Set the scrape interval to every 15 seconds. Default is every 1 minute.
+          evaluation_interval: 15s # Evaluate rules every 15 seconds. The default is every 1 minute.
+          # scrape_timeout is set to the global default (10s).
+
+        # Alertmanager configuration
+        alerting:
+          alertmanagers:
+          - static_configs:
+            - targets:
+              # - alertmanager:9093
+
+        # Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
+        rule_files:
+          # - "first_rules.yml"
+          # - "second_rules.yml"
+
+        # A scrape configuration containing exactly one endpoint to scrape:
+        # Here it's Prometheus itself.
+        scrape_configs:
+          # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+          - job_name: 'prometheus'
+
+            # metrics_path defaults to '/metrics'
+            # scheme defaults to 'http'.
+
+            static_configs:
+            - targets: ['localhost:9090']
+    kind: ConfigMap
+    metadata:
+      name: prometheus-config
+      
+      
+
+## FIN PROMETHEUS
+
+  - apiVersion: v1
+    kind: DeploymentConfig
+    metadata:
+      labels:
+        app: kong-api-gateway
+      name: prometheus
+    spec:
+      replicas: 1
+      revisionHistoryLimit: 10
+      selector:
+        app: kong-api-gateway
+        deploymentconfig: prometheus
+      strategy:
+        activeDeadlineSeconds: 21600
+        resources: {}
+        rollingParams:
+          intervalSeconds: 1
+          maxSurge: 25%
+          maxUnavailable: 25%
+          timeoutSeconds: 600
+          updatePeriodSeconds: 1
+        type: Rolling
+      template:
+        metadata:
+          labels:
+            app: kong-api-gateway
+            deploymentconfig: prometheus
+        spec:
+          containers:
+            - image: "prometheus:latest"
+              imagePullPolicy: Always
+              name: prometheus
+              ports:
+                - containerPort: 9090
+                  protocol: TCP
+              resources:
+                limits:
+                  cpu: 500m
+                  memory: 128Mi
+              livenessProbe:
+                exec:
+                  command:
+                  - sh
+                  - "-c"
+                  - |
+                    nc -z -v -w5 127.0.0.1 9090
+                    if [ "$?" == 0 ]; then
+                    exit 0
+                    else
+                    exit 1
+                    fi
+                initialDelaySeconds: 90
+                timeoutSeconds: 5
+              readinessProbe:
+                exec:
+                  command:
+                  - sh
+                  - "-c"
+                  - |
+                    nc -z -v -w5 127.0.0.1 9090
+                    if [ "$?" == 0 ]; then
+                    exit 0
+                    else
+                    exit 1
+                    fi
+                initialDelaySeconds: 30
+                timeoutSeconds: 15                  
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+              volumeMounts:
+              - name: prometheus
+                mountPath: /opt/prometheus-data
+                subPath: prometheus
+              - name: prometheus-config
+                mountPath: /opt/prometheus-config               
+          volumes:
+            - name: prometheus
+              persistentVolumeClaim:
+                claimName: kong-api-gateway-data
+            - configMap:
+                name: prometheus-config
+              name: prometheus-config                        
+          dnsPolicy: ClusterFirst
+          restartPolicy: Always
+          schedulerName: default-scheduler
+          terminationGracePeriodSeconds: 30
+      test: false
+      triggers:
+        - type: ConfigChange
+        - imageChangeParams:
+            automatic: true
+            containerNames:
+              - prometheus
+            from:
+              kind: ImageStreamTag
+              name: "prometheus:latest"
+          type: ImageChange
+
+
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        app: kong-api-gateway
+      name: prometheus
+    spec:
+      ports:
+        - name: http
+          port: 9090
+          protocol: TCP
+          targetPort: 9090
+      selector:
+        app: kong-api-gateway
+        deploymentconfig: prometheus
+      sessionAffinity: None
+      type: ClusterIP
+
+
+  - apiVersion: v1
+    kind: BuildConfig
+    metadata:
+      labels:
+        app: kong-api-gateway
+        build: prometheus
+      name: prometheus
+    spec:
+      failedBuildsHistoryLimit: 5
+      nodeSelector: null
+      output:
+        to:
+          kind: ImageStreamTag
+          name: 'prometheus:latest'
+      postCommit: {}
+      resources: {}
+      runPolicy: Serial
+      source:
+        contextDir: prometheus
+        git:
+          ref: master
+          uri: 'https://github.com/mvilche/kong-api-gateway-openshift.git'
+        type: Git
+      strategy:
+        dockerStrategy:
+          dockerfilePath: Dockerfile
+        type: Docker
+      successfulBuildsHistoryLimit: 5
+      triggers:
+        - type: ConfigChange
+
+  - apiVersion: v1
+    kind: ImageStream
+    metadata:
+      labels:
+        app: kong-api-gateway
+      name: prometheus
+    spec: {}
+
+
+  - apiVersion: v1
+    data:
+      grafana.ini: |-
+        # Everything has defaults so you only need to uncomment things you want to
+        # change
+
+        # possible values : production, development
+        app_mode = production
+
+        # instance name, defaults to HOSTNAME environment variable value or hostname if HOSTNAME var is empty
+        instance_name = ${HOSTNAME}
+
+        #################################### Paths ####################################
+        [paths]
+        # Path to where grafana can store temp files, sessions, and the sqlite3 db (if that is used)
+        data = /opt/grafana-data/data
+
+        # Temporary files in `data` directory older than given duration will be removed
+        ;temp_data_lifetime = 24h
+
+        # Directory where grafana can store logs
+        ;logs = /var/log/grafana
+
+        # Directory where grafana will automatically scan and look for plugins
+        plugins = /opt/grafana-data/plugins
+
+        # folder that contains provisioning config files that grafana will apply on startup and while running.
+        provisioning = /opt/grafana/provisioning
+
+        #################################### Server ####################################
+        [server]
+        # Protocol (http, https, h2, socket)
+        protocol = http
+
+        # The ip address to bind to, empty will bind to all interfaces
+        ;http_addr =
+
+        # The http port  to use
+        http_port = 3000
+
+        # The public facing domain name used to access grafana from a browser
+        ;domain = localhost
+
+        # Redirect to correct domain if host header does not match domain
+        # Prevents DNS rebinding attacks
+        ;enforce_domain = false
+
+        # The full public facing url you use in browser, used for redirects and emails
+        # If you use reverse proxy and sub path specify full url (with sub path)
+        ;root_url = http://localhost:3000
+
+        # Serve Grafana from subpath specified in `root_url` setting. By default it is set to `false` for compatibility reasons.
+        ;serve_from_sub_path = false
+
+        # Log web requests
+        ;router_logging = false
+
+        # the path relative working path
+        ;static_root_path = public
+
+        # enable gzip
+        ;enable_gzip = false
+
+        # https certs & key file
+        ;cert_file =
+        ;cert_key =
+
+        # Unix socket path
+        ;socket =
+
+        #################################### Database ####################################
+        [database]
+        # You can configure the database connection by specifying type, host, name, user and password
+        # as separate properties or as on string using the url properties.
+
+        # Either "mysql", "postgres" or "sqlite3", it's your choice
+        ;type = sqlite3
+        ;host = 127.0.0.1:3306
+        ;name = grafana
+        ;user = root
+        # If the password contains # or ; you have to wrap it with triple quotes. Ex """#password;"""
+        ;password =
+
+        # Use either URL or the previous fields to configure the database
+        # Example: mysql://user:secret@host:port/database
+        ;url =
+
+        # For "postgres" only, either "disable", "require" or "verify-full"
+        ;ssl_mode = disable
+
+        # For "sqlite3" only, path relative to data_path setting
+        ;path = grafana.db
+
+        # Max idle conn setting default is 2
+        ;max_idle_conn = 2
+
+        # Max conn setting default is 0 (mean not set)
+        ;max_open_conn =
+
+        # Connection Max Lifetime default is 14400 (means 14400 seconds or 4 hours)
+        ;conn_max_lifetime = 14400
+
+        # Set to true to log the sql calls and execution times.
+        ;log_queries =
+
+        # For "sqlite3" only. cache mode setting used for connecting to the database. (private, shared)
+        ;cache_mode = private
+
+        #################################### Cache server #############################
+        [remote_cache]
+        # Either "redis", "memcached" or "database" default is "database"
+        ;type = database
+
+        # cache connectionstring options
+        # database: will use Grafana primary database.
+        # redis: config like redis server e.g. `addr=127.0.0.1:6379,pool_size=100,db=0,ssl=false`. Only addr is required. ssl may be 'true', 'false', or 'insecure'.
+        # memcache: 127.0.0.1:11211
+        ;connstr =
+
+        #################################### Data proxy ###########################
+        [dataproxy]
+
+        # This enables data proxy logging, default is false
+        ;logging = false
+
+        # How long the data proxy should wait before timing out default is 30 (seconds)
+        ;timeout = 30
+
+        # If enabled and user is not anonymous, data proxy will add X-Grafana-User header with username into the request, default is false.
+        ;send_user_header = false
+
+        #################################### Analytics ####################################
+        [analytics]
+        # Server reporting, sends usage counters to stats.grafana.org every 24 hours.
+        # No ip addresses are being tracked, only simple counters to track
+        # running instances, dashboard and error counts. It is very helpful to us.
+        # Change this option to false to disable reporting.
+        ;reporting_enabled = true
+
+        # Set to false to disable all checks to https://grafana.net
+        # for new vesions (grafana itself and plugins), check is used
+        # in some UI views to notify that grafana or plugin update exists
+        # This option does not cause any auto updates, nor send any information
+        # only a GET request to http://grafana.com to get latest versions
+        ;check_for_updates = true
+
+        # Google Analytics universal tracking code, only enabled if you specify an id here
+        ;google_analytics_ua_id =
+
+        # Google Tag Manager ID, only enabled if you specify an id here
+        ;google_tag_manager_id =
+
+        #################################### Security ####################################
+        [security]
+        # default admin user, created on startup
+        ;admin_user = admin
+
+        # default admin password, can be changed before first start of grafana,  or in profile settings
+        ;admin_password = admin
+
+        # used for signing
+        ;secret_key = SW2YcwTIb9zpOOhoPsMm
+
+        # disable gravatar profile images
+        ;disable_gravatar = false
+
+        # data source proxy whitelist (ip_or_domain:port separated by spaces)
+        ;data_source_proxy_whitelist =
+
+        # disable protection against brute force login attempts
+        ;disable_brute_force_login_protection = false
+
+        # set to true if you host Grafana behind HTTPS. default is false.
+        ;cookie_secure = false
+
+        # set cookie SameSite attribute. defaults to `lax`. can be set to "lax", "strict" and "none"
+        ;cookie_samesite = lax
+
+        # set to true if you want to allow browsers to render Grafana in a <frame>, <iframe>, <embed> or <object>. default is false.
+        ;allow_embedding = false
+
+        # Set to true if you want to enable http strict transport security (HSTS) response header.
+        # This is only sent when HTTPS is enabled in this configuration.
+        # HSTS tells browsers that the site should only be accessed using HTTPS.
+        # The default version will change to true in the next minor release, 6.3.
+        ;strict_transport_security = false
+
+        # Sets how long a browser should cache HSTS. Only applied if strict_transport_security is enabled.
+        ;strict_transport_security_max_age_seconds = 86400
+
+        # Set to true if to enable HSTS preloading option. Only applied if strict_transport_security is enabled.
+        ;strict_transport_security_preload = false
+
+        # Set to true if to enable the HSTS includeSubDomains option. Only applied if strict_transport_security is enabled.
+        ;strict_transport_security_subdomains = false
+
+        # Set to true to enable the X-Content-Type-Options response header.
+        # The X-Content-Type-Options response HTTP header is a marker used by the server to indicate that the MIME types advertised
+        # in the Content-Type headers should not be changed and be followed. The default will change to true in the next minor release, 6.3.
+        ;x_content_type_options = false
+
+        # Set to true to enable the X-XSS-Protection header, which tells browsers to stop pages from loading
+        # when they detect reflected cross-site scripting (XSS) attacks. The default will change to true in the next minor release, 6.3.
+        ;x_xss_protection = false
+
+        #################################### Snapshots ###########################
+        [snapshots]
+        # snapshot sharing options
+        ;external_enabled = true
+        ;external_snapshot_url = https://snapshots-origin.raintank.io
+        ;external_snapshot_name = Publish to snapshot.raintank.io
+
+        # Set to true to enable this Grafana instance act as an external snapshot server and allow unauthenticated requests for
+        # creating and deleting snapshots.
+        ;public_mode = false
+
+        # remove expired snapshot
+        ;snapshot_remove_expired = true
+
+        #################################### Dashboards History ##################
+        [dashboards]
+        # Number dashboard versions to keep (per dashboard). Default: 20, Minimum: 1
+        ;versions_to_keep = 20
+
+        #################################### Users ###############################
+        [users]
+        # disable user signup / registration
+        ;allow_sign_up = true
+
+        # Allow non admin users to create organizations
+        ;allow_org_create = true
+
+        # Set to true to automatically assign new users to the default organization (id 1)
+        ;auto_assign_org = true
+
+        # Default role new users will be automatically assigned (if disabled above is set to true)
+        ;auto_assign_org_role = Viewer
+
+        # Background text for the user field on the login page
+        ;login_hint = email or username
+        ;password_hint = password
+
+        # Default UI theme ("dark" or "light")
+        ;default_theme = dark
+
+        # External user management, these options affect the organization users view
+        ;external_manage_link_url =
+        ;external_manage_link_name =
+        ;external_manage_info =
+
+        # Viewers can edit/inspect dashboard settings in the browser. But not save the dashboard.
+        ;viewers_can_edit = false
+
+        # Editors can administrate dashboard, folders and teams they create
+        ;editors_can_admin = false
+
+        [auth]
+        # Login cookie name
+        ;login_cookie_name = grafana_session
+
+        # The lifetime (days) an authenticated user can be inactive before being required to login at next visit. Default is 7 days,
+        ;login_maximum_inactive_lifetime_days = 7
+
+        # The maximum lifetime (days) an authenticated user can be logged in since login time before being required to login. Default is 30 days.
+        ;login_maximum_lifetime_days = 30
+
+        # How often should auth tokens be rotated for authenticated users when being active. The default is each 10 minutes.
+        ;token_rotation_interval_minutes = 10
+
+        # Set to true to disable (hide) the login form, useful if you use OAuth, defaults to false
+        ;disable_login_form = false
+
+        # Set to true to disable the signout link in the side menu. useful if you use auth.proxy, defaults to false
+        ;disable_signout_menu = false
+
+        # URL to redirect the user to after sign out
+        ;signout_redirect_url =
+
+        # Set to true to attempt login with OAuth automatically, skipping the login screen.
+        # This setting is ignored if multiple OAuth providers are configured.
+        ;oauth_auto_login = false
+
+        #################################### Anonymous Auth ######################
+        [auth.anonymous]
+        # enable anonymous access
+        ;enabled = false
+
+        # specify organization name that should be used for unauthenticated users
+        ;org_name = Main Org.
+
+        # specify role for unauthenticated users
+        ;org_role = Viewer
+
+        #################################### Github Auth ##########################
+        [auth.github]
+        ;enabled = false
+        ;allow_sign_up = true
+        ;client_id = some_id
+        ;client_secret = some_secret
+        ;scopes = user:email,read:org
+        ;auth_url = https://github.com/login/oauth/authorize
+        ;token_url = https://github.com/login/oauth/access_token
+        ;api_url = https://api.github.com/user
+        ;team_ids =
+        ;allowed_organizations =
+
+        #################################### Google Auth ##########################
+        [auth.google]
+        ;enabled = false
+        ;allow_sign_up = true
+        ;client_id = some_client_id
+        ;client_secret = some_client_secret
+        ;scopes = https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email
+        ;auth_url = https://accounts.google.com/o/oauth2/auth
+        ;token_url = https://accounts.google.com/o/oauth2/token
+        ;api_url = https://www.googleapis.com/oauth2/v1/userinfo
+        ;allowed_domains =
+
+        #################################### Generic OAuth ##########################
+        [auth.generic_oauth]
+        ;enabled = false
+        ;name = OAuth
+        ;allow_sign_up = true
+        ;client_id = some_id
+        ;client_secret = some_secret
+        ;scopes = user:email,read:org
+        ;email_attribute_name = email:primary
+        ;email_attribute_path =
+        ;auth_url = https://foo.bar/login/oauth/authorize
+        ;token_url = https://foo.bar/login/oauth/access_token
+        ;api_url = https://foo.bar/user
+        ;team_ids =
+        ;allowed_organizations =
+        ;tls_skip_verify_insecure = false
+        ;tls_client_cert =
+        ;tls_client_key =
+        ;tls_client_ca =
+
+        ; Set to true to enable sending client_id and client_secret via POST body instead of Basic authentication HTTP header
+        ; This might be required if the OAuth provider is not RFC6749 compliant, only supporting credentials passed via POST payload
+        ;send_client_credentials_via_post = false
+
+        #################################### SAML Auth ###########################
+        [auth.saml] # Enterprise only
+        # Defaults to false. If true, the feature is enabled.
+        ;enabled = false
+
+        # Base64-encoded public X.509 certificate. Used to sign requests to the IdP
+        ;certificate =
+
+        # Path to the public X.509 certificate. Used to sign requests to the IdP
+        ;certificate_path =
+
+        # Base64-encoded private key. Used to decrypt assertions from the IdP
+        ;private_key =
+
+        ;# Path to the private key. Used to decrypt assertions from the IdP
+        ;private_key_path =
+
+        # Base64-encoded IdP SAML metadata XML. Used to verify and obtain binding locations from the IdP
+        ;idp_metadata =
+
+        # Path to the SAML metadata XML. Used to verify and obtain binding locations from the IdP
+        ;idp_metadata_path =
+
+        # URL to fetch SAML IdP metadata. Used to verify and obtain binding locations from the IdP
+        ;idp_metadata_url =
+
+        # Duration, since the IdP issued a response and the SP is allowed to process it. Defaults to 90 seconds.
+        ;max_issue_delay = 90s
+
+        # Duration, for how long the SP's metadata should be valid. Defaults to 48 hours.
+        ;metadata_valid_duration = 48h
+
+        # Friendly name or name of the attribute within the SAML assertion to use as the user's name
+        ;assertion_attribute_name = displayName
+
+        # Friendly name or name of the attribute within the SAML assertion to use as the user's login handle
+        ;assertion_attribute_login = mail
+
+        # Friendly name or name of the attribute within the SAML assertion to use as the user's email
+        ;assertion_attribute_email = mail
+
+        #################################### Grafana.com Auth ####################
+        [auth.grafana_com]
+        ;enabled = false
+        ;allow_sign_up = true
+        ;client_id = some_id
+        ;client_secret = some_secret
+        ;scopes = user:email
+        ;allowed_organizations =
+
+        #################################### Auth Proxy ##########################
+        [auth.proxy]
+        ;enabled = false
+        ;header_name = X-WEBAUTH-USER
+        ;header_property = username
+        ;auto_sign_up = true
+        ;ldap_sync_ttl = 60
+        ;whitelist = 192.168.1.1, 192.168.2.1
+        ;headers = Email:X-User-Email, Name:X-User-Name
+
+        #################################### Basic Auth ##########################
+        [auth.basic]
+        ;enabled = true
+
+        #################################### Auth LDAP ##########################
+        [auth.ldap]
+        ;enabled = false
+        ;config_file = /etc/grafana/ldap.toml
+        ;allow_sign_up = true
+
+        # LDAP backround sync (Enterprise only)
+        # At 1 am every day
+        ;sync_cron = "0 0 1 * * *"
+        ;active_sync_enabled = true
+
+        #################################### SMTP / Emailing ##########################
+        [smtp]
+        ;enabled = false
+        ;host = localhost:25
+        ;user =
+        # If the password contains # or ; you have to wrap it with trippel quotes. Ex """#password;"""
+        ;password =
+        ;cert_file =
+        ;key_file =
+        ;skip_verify = false
+        ;from_address = admin@grafana.localhost
+        ;from_name = Grafana
+        # EHLO identity in SMTP dialog (defaults to instance_name)
+        ;ehlo_identity = dashboard.example.com
+
+        [emails]
+        ;welcome_email_on_sign_up = false
+
+        #################################### Logging ##########################
+        [log]
+        # Either "console", "file", "syslog". Default is console and  file
+        # Use space to separate multiple modes, e.g. "console file"
+        ;mode = console file
+
+        # Either "debug", "info", "warn", "error", "critical", default is "info"
+        ;level = info
+
+        # optional settings to set different levels for specific loggers. Ex filters = sqlstore:debug
+        ;filters =
+
+        # For "console" mode only
+        [log.console]
+        ;level =
+
+        # log line format, valid options are text, console and json
+        ;format = console
+
+        # For "file" mode only
+        [log.file]
+        ;level =
+
+        # log line format, valid options are text, console and json
+        ;format = text
+
+        # This enables automated log rotate(switch of following options), default is true
+        ;log_rotate = true
+
+        # Max line number of single file, default is 1000000
+        ;max_lines = 1000000
+
+        # Max size shift of single file, default is 28 means 1 << 28, 256MB
+        ;max_size_shift = 28
+
+        # Segment log daily, default is true
+        ;daily_rotate = true
+
+        # Expired days of log file(delete after max days), default is 7
+        ;max_days = 7
+
+        [log.syslog]
+        ;level =
+
+        # log line format, valid options are text, console and json
+        ;format = text
+
+        # Syslog network type and address. This can be udp, tcp, or unix. If left blank, the default unix endpoints will be used.
+        ;network =
+        ;address =
+
+        # Syslog facility. user, daemon and local0 through local7 are valid.
+        ;facility =
+
+        # Syslog tag. By default, the process' argv[0] is used.
+        ;tag =
+
+        #################################### Alerting ############################
+        [alerting]
+        # Disable alerting engine & UI features
+        ;enabled = true
+        # Makes it possible to turn off alert rule execution but alerting UI is visible
+        ;execute_alerts = true
+
+        # Default setting for new alert rules. Defaults to categorize error and timeouts as alerting. (alerting, keep_state)
+        ;error_or_timeout = alerting
+
+        # Default setting for how Grafana handles nodata or null values in alerting. (alerting, no_data, keep_state, ok)
+        ;nodata_or_nullvalues = no_data
+
+        # Alert notifications can include images, but rendering many images at the same time can overload the server
+        # This limit will protect the server from render overloading and make sure notifications are sent out quickly
+        ;concurrent_render_limit = 5
+
+
+        # Default setting for alert calculation timeout. Default value is 30
+        ;evaluation_timeout_seconds = 30
+
+        # Default setting for alert notification timeout. Default value is 30
+        ;notification_timeout_seconds = 30
+
+        # Default setting for max attempts to sending alert notifications. Default value is 3
+        ;max_attempts = 3
+
+        #################################### Explore #############################
+        [explore]
+        # Enable the Explore section
+        ;enabled = true
+
+        #################################### Internal Grafana Metrics ##########################
+        # Metrics available at HTTP API Url /metrics
+        [metrics]
+        # Disable / Enable internal metrics
+        ;enabled           = true
+        # Disable total stats (stat_totals_*) metrics to be generated
+        ;disable_total_stats = false
+
+        # Publish interval
+        ;interval_seconds  = 10
+
+        # Send internal metrics to Graphite
+        [metrics.graphite]
+        # Enable by setting the address setting (ex localhost:2003)
+        ;address =
+        ;prefix = prod.grafana.%(instance_name)s.
+
+        #################################### Distributed tracing ############
+        [tracing.jaeger]
+        # Enable by setting the address sending traces to jaeger (ex localhost:6831)
+        ;address = localhost:6831
+        # Tag that will always be included in when creating new spans. ex (tag1:value1,tag2:value2)
+        ;always_included_tag = tag1:value1
+        # Type specifies the type of the sampler: const, probabilistic, rateLimiting, or remote
+        ;sampler_type = const
+        # jaeger samplerconfig param
+        # for "const" sampler, 0 or 1 for always false/true respectively
+        # for "probabilistic" sampler, a probability between 0 and 1
+        # for "rateLimiting" sampler, the number of spans per second
+        # for "remote" sampler, param is the same as for "probabilistic"
+        # and indicates the initial sampling rate before the actual one
+        # is received from the mothership
+        ;sampler_param = 1
+        # Whether or not to use Zipkin propagation (x-b3- HTTP headers).
+        ;zipkin_propagation = false
+        # Setting this to true disables shared RPC spans.
+        # Not disabling is the most common setting when using Zipkin elsewhere in your infrastructure.
+        ;disable_shared_zipkin_spans = false
+
+        #################################### Grafana.com integration  ##########################
+        # Url used to import dashboards directly from Grafana.com
+        [grafana_com]
+        ;url = https://grafana.com
+
+        #################################### External image storage ##########################
+        [external_image_storage]
+        # Used for uploading images to public servers so they can be included in slack/email messages.
+        # you can choose between (s3, webdav, gcs, azure_blob, local)
+        ;provider =
+
+        [external_image_storage.s3]
+        ;bucket =
+        ;region =
+        ;path =
+        ;access_key =
+        ;secret_key =
+
+        [external_image_storage.webdav]
+        ;url =
+        ;public_url =
+        ;username =
+        ;password =
+
+        [external_image_storage.gcs]
+        ;key_file =
+        ;bucket =
+        ;path =
+
+        [external_image_storage.azure_blob]
+        ;account_name =
+        ;account_key =
+        ;container_name =
+
+        [external_image_storage.local]
+        # does not require any configuration
+
+        [rendering]
+        # Options to configure external image rendering server like https://github.com/grafana/grafana-image-renderer
+        ;server_url =
+        ;callback_url =
+
+        [enterprise]
+        # Path to a valid Grafana Enterprise license.jwt file
+        ;license_path =
+
+        [panels]
+        # If set to true Grafana will allow script tags in text panels. Not recommended as it enable XSS vulnerabilities.
+        ;disable_sanitize_html = false
+
+        [plugins]
+        ;enable_alpha = false
+        ;app_tls_skip_verify_insecure = false
+    kind: ConfigMap
+    metadata:
+      name: grafana-config
+
+
+
+
+  - apiVersion: v1
+    data:
+      datasources.yml: |-
+        # config file version
+        apiVersion: 1
+
+        # list of datasources that should be deleted from the database
+        deleteDatasources:
+          - name: Prometheus
+            orgId: 1
+
+        # list of datasources to insert/update depending
+        # what's available in the database
+        datasources:
+          # <string, required> name of the datasource. Required
+        - name: Prometheus
+          # <string, required> datasource type. Required
+          type: prometheus
+          # <string, required> access mode. proxy or direct (Server or Browser in the UI). Required
+          access: proxy
+          # <int> org id. will default to orgId 1 if not specified
+          orgId: 1
+          # <string> url
+          url: http://prometheus:9090
+          # <string> Deprecated, use secureJsonData.password
+          password:
+          # <string> database user, if used
+          user:
+          # <string> database name, if used
+          database:
+          # <bool> enable/disable basic auth
+          basicAuth:
+          # <string> basic auth username
+          basicAuthUser:
+          # <string> Deprecated, use secureJsonData.basicAuthPassword
+          basicAuthPassword:
+          # <bool> enable/disable with credentials headers
+          withCredentials:
+          # <bool> mark as default datasource. Max one per org
+          isDefault:
+          # <map> fields that will be converted to json and stored in jsonData
+          version: 1
+          # <bool> allow users to edit datasources from the UI.
+          editable: false
+    kind: ConfigMap
+    metadata:
+      name: grafana-config-datasource
+
+  - apiVersion: v1
+    data:
+      dashboard.yml: |-
+        apiVersion: 1
+        
+        providers:
+        - name: 'Prometheus'
+          orgId: 1
+          folder: ''
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /opt/grafana-dashboard
+    kind: ConfigMap
+    metadata:
+      name: grafana-config-dashboard       
+
+
+  - apiVersion: v1
+    kind: DeploymentConfig
+    metadata:
+      labels:
+        app: kong-api-gateway
+      name: grafana
+    spec:
+      replicas: 1
+      revisionHistoryLimit: 10
+      selector:
+        app: kong-api-gateway
+        deploymentconfig: grafana
+      strategy:
+        activeDeadlineSeconds: 21600
+        resources: {}
+        rollingParams:
+          intervalSeconds: 1
+          maxSurge: 25%
+          maxUnavailable: 25%
+          timeoutSeconds: 600
+          updatePeriodSeconds: 1
+        type: Rolling
+      template:
+        metadata:
+          labels:
+            app: kong-api-gateway
+            deploymentconfig: grafana
+        spec:
+          containers:
+            - image: "grafana:latest"
+              imagePullPolicy: Always
+              name: grafana
+              ports:
+                - containerPort: 3000
+                  protocol: TCP
+              resources:
+                limits:
+                  cpu: 500m
+                  memory: 128Mi
+              livenessProbe:
+                exec:
+                  command:
+                  - sh
+                  - "-c"
+                  - |
+                    nc -z -v -w5 127.0.0.1 3000
+                    if [ "$?" == 0 ]; then
+                    exit 0
+                    else
+                    exit 1
+                    fi
+                initialDelaySeconds: 90
+                timeoutSeconds: 5
+              readinessProbe:
+                exec:
+                  command:
+                  - sh
+                  - "-c"
+                  - |
+                    nc -z -v -w5 127.0.0.1 3000
+                    if [ "$?" == 0 ]; then
+                    exit 0
+                    else
+                    exit 1
+                    fi
+                initialDelaySeconds: 30
+                timeoutSeconds: 15                  
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+              volumeMounts:
+              - name: grafana
+                mountPath: /opt/grafana-data
+                subPath: grafana
+              - name: grafana-config
+                mountPath: /opt/grafana-config
+              - name: grafana-config-datasource
+                mountPath: /opt/grafana/conf/provisioning/datasources
+              - name: grafana-config-dashboard
+                mountPath: /opt/grafana/conf/provisioning/dashboards                                      
+          volumes:
+            - name: grafana
+              persistentVolumeClaim:
+                claimName: kong-api-gateway-data
+            - configMap:
+                name: grafana-config
+              name: grafana-config
+            - configMap:
+                name: grafana-config-datasource
+              name: grafana-config-datasource
+            - configMap:
+                name: grafana-config-dashboard
+              name: grafana-config-dashboard                                                   
+          dnsPolicy: ClusterFirst
+          restartPolicy: Always
+          schedulerName: default-scheduler
+          terminationGracePeriodSeconds: 30
+      test: false
+      triggers:
+        - type: ConfigChange
+        - imageChangeParams:
+            automatic: true
+            containerNames:
+              - grafana
+            from:
+              kind: ImageStreamTag
+              name: "grafana:latest"
+          type: ImageChange
+
+
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        app: kong-api-gateway
+      name: grafana
+    spec:
+      ports:
+        - name: http
+          port: 3000
+          protocol: TCP
+          targetPort: 3000
+      selector:
+        app: kong-api-gateway
+        deploymentconfig: grafana
+      sessionAffinity: None
+      type: ClusterIP
+
+
+  - apiVersion: v1
+    kind: BuildConfig
+    metadata:
+      labels:
+        app: kong-api-gateway
+        build: grafana
+      name: grafana
+    spec:
+      failedBuildsHistoryLimit: 5
+      nodeSelector: null
+      output:
+        to:
+          kind: ImageStreamTag
+          name: 'grafana:latest'
+      postCommit: {}
+      resources: {}
+      runPolicy: Serial
+      source:
+        contextDir: grafana
+        git:
+          ref: master
+          uri: 'https://github.com/mvilche/kong-api-gateway-openshift.git'
+        type: Git
+      strategy:
+        dockerStrategy:
+          dockerfilePath: Dockerfile
+        type: Docker
+      successfulBuildsHistoryLimit: 5
+      triggers:
+        - type: ConfigChange
+
+  - apiVersion: v1
+    kind: ImageStream
+    metadata:
+      labels:
+        app: kong-api-gateway
+      name: grafana
+    spec: {}      
+      
+      
+
+
+
