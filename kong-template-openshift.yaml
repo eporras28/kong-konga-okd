@@ -1120,7 +1120,7 @@
         contextDir: kong
         git:
           ref: master
-          uri: 'https://github.com/mvilche/kong-api-gateway-openshift.git'
+          uri: 'https://github.com/eporras28/kong-konga-okd.git'
         type: Git
       strategy:
         dockerStrategy:
@@ -1314,7 +1314,7 @@
         contextDir: mongo
         git:
           ref: master
-          uri: 'https://github.com/mvilche/kong-api-gateway-openshift.git'
+          uri: 'https://github.com/eporras28/kong-konga-okd.git'
         type: Git
       strategy:
         dockerStrategy:
@@ -1605,7 +1605,7 @@
         contextDir: konga
         git:
           ref: master
-          uri: 'https://github.com/mvilche/kong-api-gateway-openshift.git'
+          uri: 'https://github.com/eporras28/kong-konga-okd.git'
         type: Git
       strategy:
         dockerStrategy:
@@ -2349,7 +2349,7 @@
         contextDir: redis
         git:
           ref: master
-          uri: 'https://github.com/mvilche/kong-api-gateway-openshift.git'
+          uri: 'https://github.com/eporras28/kong-konga-okd.git'
         type: Git
       strategy:
         dockerStrategy:
@@ -2549,7 +2549,7 @@
         contextDir: prometheus
         git:
           ref: master
-          uri: 'https://github.com/mvilche/kong-api-gateway-openshift.git'
+          uri: 'https://github.com/eporras28/kong-konga-okd.git'
         type: Git
       strategy:
         dockerStrategy:
@@ -3407,7 +3407,7 @@
         contextDir: grafana
         git:
           ref: master
-          uri: 'https://github.com/mvilche/kong-api-gateway-openshift.git'
+          uri: 'https://github.com/eporras28/kong-konga-okd.git'
         type: Git
       strategy:
         dockerStrategy:
