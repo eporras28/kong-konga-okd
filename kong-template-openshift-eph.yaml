@@ -2,17 +2,17 @@
   apiVersion: v1
   kind: Template
   metadata:
-    name: kong-openshift-mvilche
+    name: kong-openshift-mvilche-ephemeral
     labels:
-      template: konga-openshift-mvilche
-      autor: "Martin_Fabrizzio_Vilche"
+      template: konga-openshift-mvilche-ephemeral
+      autor: "Eduardo_Porras"
     annotations:
-      openshift.io/display-name: "konga-openshift-mvilche"
+      openshift.io/display-name: "konga-openshift-mvilche-ephemeral"
       iconClass: "icon-github"
       description: >-
         konga api gateway INTEGRACION OPENSHIFT
-        Martin Fabrizzio Vilche.
-        https://github.com/mvilche.
+        Eduardop Porras.
+        https://github.com/eporras28.
 
   objects:
 
