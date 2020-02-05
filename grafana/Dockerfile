@@ -11,7 +11,9 @@ COPY kong-official_rev6.json /opt/grafana-dashboard/kong-official_rev6.json
 RUN adduser -u 1001 grafana && usermod -aG 0 grafana && \
 chown -R 1001 /opt && \
 chgrp -R 0 /opt  && \
-chmod -R g=u /opt
+chmod -R g=u /opt && \
+sed 's/;admin_user/admin_user/g' /opt/grafana-config/grafana.ini && \
+sed 's/;admin_password/admin_password/g' /opt/grafana-config/grafana.ini
 
 USER 1001
 
